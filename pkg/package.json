@@ -1,0 +1,13 @@
+{
+  "name": "atresolver",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "atresolver_bg.wasm",
+    "atresolver.js"
+  ],
+  "main": "atresolver.js",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}

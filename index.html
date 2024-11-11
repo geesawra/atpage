@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <title>loading...</title>
+  </head>
+  <body>
+    <pre>Loading content from PDS...</pre>
+    <img src="https://files.catbox.moe/zq2bqo.gif">
+    <script type="module">
+      if ("serviceWorker" in navigator) {
+            try {
+              const registration = await navigator.serviceWorker.register("./sw.js", {
+                scope: "/",
+                type: "module",
+              });
+              if (registration.installing) {
+                console.log("Service worker installing");
+              } else if (registration.waiting) {
+                console.log("Service worker installed");
+              } else if (registration.active) {
+                console.log("Service worker active");
+              }
+            } catch (error) {
+              console.error(`Registration failed with ${error}`);
+            }
+          }
+          let doc = await fetch("at://did:plc:6ll5xi67lyuyovt6fiv4fnjo/industries.geesawra.webpages/06Q5QFGDCM188")
+          if (!response.ok) {
+            throw new Error(`Response status: ${response.status}`);
+          }
+          document.documentElement.innerHTML = doc
+    </script>
+  </body>
+</html>
