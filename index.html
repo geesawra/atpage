@@ -25,11 +25,15 @@
               console.error(`Registration failed with ${error}`);
             }
           }
-          let doc = await fetch("at://did:plc:6ll5xi67lyuyovt6fiv4fnjo/industries.geesawra.webpages/06Q5QFGDCM188")
-          if (!response.ok) {
-            throw new Error(`Response status: ${response.status}`);
+          /*let doc = await fetch(window.location.origin+"?aturl=geesawra.industries/industries.geesawra.webpages/06Q5QFGDCM188");
+
+          if (!doc.ok) {
+            throw new Error(`Response status: ${doc.status}`);
           }
-          document.documentElement.innerHTML = doc
+
+          document.documentElement.innerHTML = await doc.text()*/
     </script>
+
+    <pre><a href="http://localhost:8000?aturl=geesawra.industries/industries.geesawra.webpages/06Q5QFGDCM188">Click me</a></pre>
   </body>
 </html>

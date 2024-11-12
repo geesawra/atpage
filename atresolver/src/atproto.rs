@@ -1,11 +1,21 @@
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response};
+use web_sys::{Request, RequestInit, RequestMode, Response, WorkerGlobalScope};
 
 const PLC_DIRECTORY: &'static str = "https://plc.directory";
 const BSKY_SOCIAL: &'static str = "https://bsky.social";
-const COLLECTION: &'static str = "industries.geesawra.webpages";
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
+
+#[allow(unused_macros)]
+macro_rules! console_log {
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -36,6 +46,7 @@ impl From<serde_wasm_bindgen::Error> for Error {
 }
 
 #[allow(dead_code)]
+#[derive(Debug)]
 pub struct Webpage {
     pub date: String,
     pub title: String,
@@ -71,8 +82,40 @@ fn url(base: String, args: &[(String, String)]) -> String {
     format!("{}?{}", base, args)
 }
 
-pub fn is_at_url(u: String) -> bool {
-    u.starts_with("at://")
+pub fn maybe_at_url(u: String) -> Option<String> {
+    if !u.contains("?aturl=") {
+        return None;
+    }
+
+    let base = u.split("?").collect::<Vec<&str>>();
+
+    if base.len() <= 1 {
+        return None;
+    }
+
+    let params = base[1].strip_prefix("aturl=").unwrap_or_default();
+
+    console_log!("at url: {:?}", params);
+
+    Some(params.to_string())
+}
+
+pub struct ATURL {
+    pub did: String,
+    pub collection: String,
+    pub key: String,
+}
+
+impl From<String> for ATURL {
+    fn from(value: String) -> Self {
+        let comp = value.split("/").collect::<Vec<&str>>();
+
+        ATURL {
+            did: comp[0].to_string(),
+            collection: comp[1].to_string(),
+            key: comp[2].to_string(),
+        }
+    }
 }
 
 pub async fn solve_did(handle: String) -> Result<String, Error> {
@@ -111,22 +154,35 @@ pub async fn solve_pds(did: String) -> Result<String, Error> {
     )
 }
 
-pub async fn webpage(pds: String, did: String) -> Result<Webpage, Error> {
+pub async fn data(pds: String, did: String, collection: String) -> Result<JsValue, Error> {
     let u = url(
         pds_url(pds, "com.atproto.repo.listRecords".to_string()),
         &[
             ("repo".to_string(), did.clone()),
-            ("collection".to_string(), COLLECTION.to_string()),
+            ("collection".to_string(), collection),
         ],
     );
 
-    let data = get(u).await?;
+    Ok(get(u).await?)
+}
 
+pub async fn webpage(data: JsValue, key: String) -> Result<Webpage, Error> {
     let resp: serde_json::Value = serde_wasm_bindgen::from_value(data)?;
 
-    let page = resp
-        .get("records")
-        .and_then(|e| e.get(0)) // grab only the first record ever
+    let arr = resp.get("records").and_then(|e| e.as_array()).unwrap();
+
+    let mut value = None;
+    for e in arr {
+        let e_cloned = e.clone();
+        let uri = e_cloned.get("uri").unwrap();
+        let uri = uri.as_str().unwrap();
+        if uri.ends_with(&key) {
+            value = Some(e);
+            break;
+        }
+    }
+
+    let page = value // grab only the first record ever
         .and_then(|e| e.get("value"))
         .and_then(|e| e.get("record"))
         .unwrap(); // from now on we have the real record
@@ -156,7 +212,10 @@ pub async fn webpage(pds: String, did: String) -> Result<Webpage, Error> {
 
 #[wasm_bindgen]
 pub async fn get(url: String) -> Result<JsValue, JsValue> {
-    let resp: Response = get_raw(url).await?.dyn_into().unwrap();
+    let resp: Response = get_raw_worker(url, RequestMode::Cors)
+        .await?
+        .dyn_into()
+        .unwrap();
 
     // Convert this other `Promise` into a rust `Future`.
     let json = JsFuture::from(resp.json()?).await?;
@@ -166,17 +225,20 @@ pub async fn get(url: String) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen]
-pub async fn get_raw(url: String) -> Result<Response, JsValue> {
+pub async fn get_raw_worker(url: String, req_mode: RequestMode) -> Result<Response, JsValue> {
+    use wasm_bindgen::JsCast;
+
+    let worker = js_sys::global().dyn_into::<WorkerGlobalScope>().unwrap();
+
     let opts = RequestInit::new();
     opts.set_method("GET");
-    opts.set_mode(RequestMode::Cors);
+    opts.set_mode(req_mode);
 
     let request = Request::new_with_str_and_init(&url, &opts)?;
 
     request.headers().set("Accept", "application/json")?;
 
-    let window = web_sys::window().unwrap();
-    let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+    let resp_value = JsFuture::from(worker.fetch_with_request(&request)).await?;
 
     // `resp_value` is a `Response` object.
     assert!(resp_value.is_instance_of::<Response>());

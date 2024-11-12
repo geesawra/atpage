@@ -14,7 +14,7 @@ self.addEventListener("fetch", (event) => {
         try {
           await init();
           const res = await resolve(event);
-          return fetch(res);
+          return res;
         } catch (error) {
           console.log("[SW] Fetch error:", error);
           return;
