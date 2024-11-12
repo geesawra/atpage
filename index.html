@@ -11,7 +11,6 @@
       if ("serviceWorker" in navigator) {
             try {
               const registration = await navigator.serviceWorker.register("./sw.js", {
-                scope: "/",
                 type: "module",
               });
               if (registration.installing) {
@@ -34,6 +33,6 @@
           document.documentElement.innerHTML = await doc.text()*/
     </script>
 
-    <pre><a href="http://localhost:8000?aturl=geesawra.industries/industries.geesawra.webpages/06Q5QFGDCM188">Click me</a></pre>
+    <pre><a href="./?aturl=geesawra.industries/industries.geesawra.webpages/06Q5QFGDCM188">Click me</a></pre>
   </body>
 </html>
