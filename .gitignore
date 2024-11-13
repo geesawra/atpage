@@ -1,2 +1,4 @@
 /target
-/pkg
+pkg
+/public
+.DS_Store
