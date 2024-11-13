@@ -1,4 +1,4 @@
-import init, { resolve } from "./pkg/atresolver.js";
+import init, { resolve } from "./pkg/atpage.js";
 
 self.addEventListener("install", () => {
   self.skipWaiting();
