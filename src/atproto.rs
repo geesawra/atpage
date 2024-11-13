@@ -9,18 +9,11 @@ const BSKY_SOCIAL: &'static str = "https://bsky.social";
 #[allow(dead_code)]
 #[derive(Debug)]
 pub enum Error {
-    Reqwest(reqwest::Error),
     NoDIDFound(String),
     NoPDSFound(String),
     JSError(JsValue),
     JSSerdeError(serde_wasm_bindgen::Error),
     MalformedATURL(String),
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(value: reqwest::Error) -> Self {
-        Self::Reqwest(value)
-    }
 }
 
 impl From<JsValue> for Error {
@@ -43,19 +36,32 @@ pub struct Webpage {
 }
 
 fn plc_url(did: String) -> String {
-    format!("{}/{}", PLC_DIRECTORY, did)
+    let u = Url::new(&PLC_DIRECTORY).unwrap();
+
+    u.set_pathname(&did);
+
+    u.href()
 }
 
 fn bsky_url(method: String) -> String {
-    format!("{}/{}", xrpc_url(BSKY_SOCIAL), method)
+    log::debug!("bsky url: {}", &xrpc_url(&BSKY_SOCIAL));
+    let u = Url::new_with_base(&method, &xrpc_url(&BSKY_SOCIAL)).unwrap();
+
+    u.href()
 }
 
 fn xrpc_url(base: &str) -> String {
-    format!("{}/xrpc", base)
+    let u = Url::new(base).unwrap();
+
+    u.set_pathname("/xrpc/");
+
+    u.href()
 }
 
 fn pds_url(pds: String, method: String) -> String {
-    format!("{}/{}", xrpc_url(&pds), method)
+    let u = Url::new_with_base(&method, &xrpc_url(&pds)).unwrap();
+
+    u.href()
 }
 
 fn url(base: String, args: &[(String, String)]) -> String {
@@ -63,12 +69,12 @@ fn url(base: String, args: &[(String, String)]) -> String {
         return base;
     }
 
-    let args = args
-        .into_iter()
-        .map(|e| format!("{}={}&", e.0, e.1))
-        .collect::<String>();
+    let bu = Url::new(&base).unwrap();
 
-    format!("{}?{}", base, args)
+    args.into_iter()
+        .for_each(|(k, v)| bu.search_params().set(k, v));
+
+    bu.href()
 }
 
 pub fn parse_at_url(u: String) -> Option<Result<ATURL, Error>> {
