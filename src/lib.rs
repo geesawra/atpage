@@ -6,18 +6,8 @@ use wasm_bindgen::prelude::*;
 use web_sys::{Response, ResponseInit};
 
 #[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-}
-
-#[allow(unused_macros)]
-macro_rules! console_log {
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
-}
-
-#[wasm_bindgen]
 pub async fn resolve(event: web_sys::FetchEvent) -> web_sys::Response {
+    wasm_logger::init(wasm_logger::Config::default());
     console_error_panic_hook::set_once();
     let u = event.request().url();
 
@@ -45,12 +35,12 @@ pub async fn resolve(event: web_sys::FetchEvent) -> web_sys::Response {
         ri.set_status(200);
         ri.set_headers(&serde_wasm_bindgen::to_value(&headers).unwrap());
 
-        console_log!("ri: {:?}", ri);
+        log::debug!("ri: {:?}", ri);
 
         let r = Response::new_with_opt_str_and_init(Some(&webpage.content), &ri).unwrap();
         r
     } else {
-        console_log!("not an at url, fetching then returning: {}", u.clone());
+        log::debug!("not an at url, fetching then returning: {}", u.clone());
 
         return atproto::get_raw_worker(u.clone(), web_sys::RequestMode::NoCors)
             .await
