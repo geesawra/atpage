@@ -1,21 +1,10 @@
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, Response, WorkerGlobalScope};
+use web_sys::{Request, RequestInit, RequestMode, Response, Url, WorkerGlobalScope};
 
 const PLC_DIRECTORY: &'static str = "https://plc.directory";
 const BSKY_SOCIAL: &'static str = "https://bsky.social";
-
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
-}
-
-#[allow(unused_macros)]
-macro_rules! console_log {
-    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
-}
 
 #[allow(dead_code)]
 #[derive(Debug)]
@@ -25,6 +14,7 @@ pub enum Error {
     NoPDSFound(String),
     JSError(JsValue),
     JSSerdeError(serde_wasm_bindgen::Error),
+    MalformedATURL(String),
 }
 
 impl From<reqwest::Error> for Error {
@@ -46,7 +36,6 @@ impl From<serde_wasm_bindgen::Error> for Error {
 }
 
 #[allow(dead_code)]
-#[derive(Debug)]
 pub struct Webpage {
     pub date: String,
     pub title: String,
@@ -82,22 +71,12 @@ fn url(base: String, args: &[(String, String)]) -> String {
     format!("{}?{}", base, args)
 }
 
-pub fn maybe_at_url(u: String) -> Option<String> {
-    if !u.contains("?aturl=") {
-        return None;
-    }
+pub fn parse_at_url(u: String) -> Option<Result<ATURL, Error>> {
+    let jsu = Url::new(&u).unwrap();
 
-    let base = u.split("?").collect::<Vec<&str>>();
-
-    if base.len() <= 1 {
-        return None;
-    }
-
-    let params = base[1].strip_prefix("aturl=").unwrap_or_default();
-
-    console_log!("at url: {:?}", params);
-
-    Some(params.to_string())
+    jsu.pathname()
+        .strip_prefix("/at/")
+        .map(|e| TryFrom::try_from(e.to_string()))
 }
 
 pub struct ATURL {
@@ -106,15 +85,21 @@ pub struct ATURL {
     pub key: String,
 }
 
-impl From<String> for ATURL {
-    fn from(value: String) -> Self {
+impl TryFrom<String> for ATURL {
+    type Error = Error;
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
         let comp = value.split("/").collect::<Vec<&str>>();
 
-        ATURL {
+        if comp.len() != 3 {
+            return Err(Error::MalformedATURL(value));
+        }
+
+        Ok(ATURL {
             did: comp[0].to_string(),
             collection: comp[1].to_string(),
             key: comp[2].to_string(),
-        }
+        })
     }
 }
 

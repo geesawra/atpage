@@ -1,7 +1,7 @@
 mod atproto;
 use std::collections::HashMap;
 
-use atproto::{maybe_at_url, ATURL};
+use atproto::parse_at_url;
 use wasm_bindgen::prelude::*;
 use web_sys::{Response, ResponseInit};
 
@@ -21,9 +21,8 @@ pub async fn resolve(event: web_sys::FetchEvent) -> web_sys::Response {
     console_error_panic_hook::set_once();
     let u = event.request().url();
 
-    if let Some(atu) = maybe_at_url(u.clone()) {
-        console_log!("is an at url: {}", atu);
-        let atu = ATURL::from(atu);
+    if let Some(atu) = parse_at_url(u.clone()) {
+        let atu = atu.unwrap();
 
         let did = atproto::solve_did(atu.did)
             .await
