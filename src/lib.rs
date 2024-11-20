@@ -6,9 +6,13 @@ use wasm_bindgen::prelude::*;
 use web_sys::{Response, ResponseInit};
 
 #[wasm_bindgen]
-pub async fn resolve(event: web_sys::FetchEvent) -> web_sys::Response {
+pub fn init_wasm_log() {    
     wasm_logger::init(wasm_logger::Config::default());
     console_error_panic_hook::set_once();
+}
+
+#[wasm_bindgen]
+pub async fn resolve(event: web_sys::FetchEvent) -> web_sys::Response {
     let u = event.request().url();
 
     if let Some(atu) = parse_at_url(u.clone()) {

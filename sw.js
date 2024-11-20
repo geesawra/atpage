@@ -1,8 +1,14 @@
-import init, { resolve } from "./pkg/atpage.js";
+import init, { resolve, init_wasm_log } from "./pkg/atpage.js";
+
 
 const broadcast = new BroadcastChannel('sw');
 
 self.addEventListener("install", () => {
+  (async () => {
+    await init().then(() => {
+      init_wasm_log();
+    });
+  })();
   self.skipWaiting();
 });
 
@@ -15,7 +21,6 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     (async () => {
       try {
-        await init();
         const res = await resolve(event);
         return res;
       } catch (error) {
