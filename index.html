@@ -2,11 +2,21 @@
 <html lang="en-US">
   <head>
     <meta charset="utf-8">
-    <title>loading...</title>
+    <title>Loading...</title>
+    <style>
+      #fish {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+      }
+    </style>
   </head>
   <body>
-    <pre>Loading content from PDS...</pre>
-    <img src="https://files.catbox.moe/zq2bqo.gif">
+    <div id="fish">
+      <pre>Loading content from PDS...</pre>
+      <img src="https://files.catbox.moe/zq2bqo.gif">
+    </div>
     <script type="module">
       if ("serviceWorker" in navigator) {
             try {
@@ -24,15 +34,20 @@
               console.error(`Registration failed with ${error}`);
             }
           }
-          /*let doc = await fetch(window.location.origin+"?aturl=geesawra.industries/industries.geesawra.webpages/06Q5QFGDCM188");
-
-          if (!doc.ok) {
-            throw new Error(`Response status: ${doc.status}`);
-          }
-
-          document.documentElement.innerHTML = await doc.text()*/
     </script>
-
-    <pre><a href="./at/geesawra.industries/industries.geesawra.webpages/06Q5QFGDCM188">Click me</a></pre>
+    <iframe src="./at/geesawra.industries/industries.geesawra.webpages/06Q5QFGDCM188" style="
+    position: fixed;
+    top: 0px;
+    bottom: 0px;
+    right: 0px;
+    width: 100%;
+    border: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    z-index: 999999;
+    height: 100%;
+    ">
+    </iframe>
   </body>
 </html>
