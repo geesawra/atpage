@@ -5,6 +5,7 @@ build:
 	mkdir -p public/pkg
 	cp pkg/* public/pkg
 	cp index.html public
+	cp index.js public
 	cp sw.js public
 	rm -rf pkg
 
