@@ -4,7 +4,9 @@ Publish your website on an ATProto PDS.
 
 > [!WARNING]
 > WIP
+>
 > Nothing works
+>
 > The only website that has this thing deployed is https://geesawra.industries, but it's just a demo.
 
 ## Requirements
