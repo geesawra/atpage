@@ -1,0 +1,25 @@
+{
+  "lexicon": 1,
+  "id": "industries.geesawra.website.page",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A record holding the content of a page, addressable by its record key",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "content": { "type": "string" },
+          "embeds": {
+            "type": "array",
+            "items": { 
+              "type": "blob",
+              "accept": ["*"]
+            }
+          }
+        }
+      }
+    }
+  }
+}

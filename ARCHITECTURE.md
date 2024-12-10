@@ -27,3 +27,19 @@ PDS ->
 ```
 
 Record key are defined [here](https://atproto.com/specs/record-key).
+
+
+## Architecture v2
+
+One record = one `Page` = one text resource.
+
+HTML is a record, while CSS, JS and images are stored as `blob` objects.
+
+Each record holds a list of `blob` associated with it (`blob` refs need to be referenced by a `Record` otherwise they get discarded, and on top of that this way we have an easy path to deletion).
+
+```rust
+struct Page {
+  content: String,
+  embeds: Vec<Blob>
+}
+```
