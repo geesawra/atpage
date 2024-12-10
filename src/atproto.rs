@@ -30,8 +30,6 @@ impl From<serde_wasm_bindgen::Error> for Error {
 
 #[allow(dead_code)]
 pub struct Webpage {
-    pub date: String,
-    pub title: String,
     pub content: String,
 }
 
@@ -85,10 +83,12 @@ pub fn parse_at_url(u: String) -> Option<Result<ATURL, Error>> {
         .map(|e| TryFrom::try_from(e.to_string()))
 }
 
+#[derive(Debug)]
 pub struct ATURL {
     pub did: String,
     pub collection: String,
     pub key: String,
+    pub blob: bool,
 }
 
 impl TryFrom<String> for ATURL {
@@ -105,6 +105,7 @@ impl TryFrom<String> for ATURL {
             did: comp[0].to_string(),
             collection: comp[1].to_string(),
             key: comp[2].to_string(),
+            blob: comp[1].to_string() == "blobs",
         })
     }
 }
@@ -116,7 +117,7 @@ pub async fn solve_did(handle: String) -> Result<String, Error> {
         &params,
     );
 
-    let data = get(u).await?;
+    let data = get(u, false).await?;
 
     let resp: HashMap<String, String> = serde_wasm_bindgen::from_value(data)?;
 
@@ -128,7 +129,7 @@ pub async fn solve_did(handle: String) -> Result<String, Error> {
 }
 
 pub async fn solve_pds(did: String) -> Result<String, Error> {
-    let data = get(plc_url(did.clone())).await?;
+    let data = get(plc_url(did.clone()), false).await?;
 
     let resp: serde_json::Value = serde_wasm_bindgen::from_value(data)?;
 
@@ -145,16 +146,32 @@ pub async fn solve_pds(did: String) -> Result<String, Error> {
     )
 }
 
-pub async fn data(pds: String, did: String, collection: String) -> Result<JsValue, Error> {
-    let u = url(
-        pds_url(pds, "com.atproto.repo.listRecords".to_string()),
-        &[
-            ("repo".to_string(), did.clone()),
-            ("collection".to_string(), collection),
-        ],
-    );
+pub async fn data(
+    pds: String,
+    did: String,
+    collection: String,
+    blob: bool,
+) -> Result<JsValue, Error> {
+    let (method, args) = match blob {
+        true => (
+            "com.atproto.sync.getBlob",
+            &[
+                ("did".to_string(), did.clone()),
+                ("cid".to_string(), collection),
+            ],
+        ),
+        false => (
+            "com.atproto.repo.listRecords",
+            &[
+                ("repo".to_string(), did.clone()),
+                ("collection".to_string(), collection),
+            ],
+        ),
+    };
 
-    Ok(get(u).await?)
+    let u = url(pds_url(pds, method.to_string()), args);
+
+    Ok(get(u, blob).await?)
 }
 
 pub async fn webpage(data: JsValue, key: String) -> Result<Webpage, Error> {
@@ -175,7 +192,6 @@ pub async fn webpage(data: JsValue, key: String) -> Result<Webpage, Error> {
 
     let page = value // grab only the first record ever
         .and_then(|e| e.get("value"))
-        .and_then(|e| e.get("record"))
         .unwrap(); // from now on we have the real record
 
     let content = page
@@ -183,35 +199,27 @@ pub async fn webpage(data: JsValue, key: String) -> Result<Webpage, Error> {
         .and_then(|e| e.as_str())
         .unwrap()
         .to_string();
-    let title = page
-        .get("title")
-        .and_then(|e| e.as_str())
-        .unwrap()
-        .to_string();
-    let date = page
-        .get("date")
-        .and_then(|e| e.as_str())
-        .unwrap()
-        .to_string();
 
-    Ok(Webpage {
-        date,
-        title,
-        content,
-    })
+    Ok(Webpage { content })
 }
 
 #[wasm_bindgen]
-pub async fn get(url: String) -> Result<JsValue, JsValue> {
+pub async fn get(url: String, blob: bool) -> Result<JsValue, JsValue> {
+    log::debug!("getting {}", url);
     let resp: Response = get_raw_worker(url, RequestMode::Cors)
         .await?
         .dyn_into()
         .unwrap();
 
     // Convert this other `Promise` into a rust `Future`.
-    let json = JsFuture::from(resp.json()?).await?;
+    let json = JsFuture::from({
+        match blob {
+            true => resp.array_buffer()?,
+            false => resp.json()?,
+        }
+    })
+    .await?;
 
-    // Send the JSON response back to JS.
     Ok(json)
 }
 

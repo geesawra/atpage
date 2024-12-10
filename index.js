@@ -1,4 +1,4 @@
-let homepage = "./at/geesawra.industries/industries.geesawra.webpages/06Q5QFGDCM188";
+let homepage = "./at/geesawra.industries/industries.geesawra.website/0J560QSE5DNTS";
 
 const broadcast = new BroadcastChannel('sw');
 
