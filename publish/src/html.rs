@@ -4,6 +4,8 @@ use thiserror::{self, Error};
 
 const EDITABLE_ATTRS: [&'static str; 2] = ["href", "src"];
 
+type EditRet = Result<Option<String>, Error>;
+
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Io error")]
@@ -47,31 +49,37 @@ pub fn walk_html(dir: PathBuf) -> Result<Vec<PathBuf>, Error> {
     Ok(ret)
 }
 
-pub fn scan_html(
+/// scan_html_path calls scan_html over the content of f.
+pub fn scan_html_path(
     f: PathBuf,
-    editor: impl Fn(String) -> Result<String, Error>,
+    editor: impl Fn(String, bool) -> EditRet,
 ) -> Result<String, Error> {
     let content = std::fs::read(f)?;
     let content = String::from_utf8(content)?;
-    let doc = dom_query::Document::from(content);
 
+    scan_html(content, editor)
+}
+
+/// scan_html scans the HTML contained in data, and runs editor on the content of the tree.
+/// editor implementors will receive the content of either an src or href tag attribute, and
+/// a boolean that's true if the attribute is on an <a> tag.
+pub fn scan_html(data: String, editor: impl Fn(String, bool) -> EditRet) -> Result<String, Error> {
+    let doc = dom_query::Document::from(data);
     let body = doc.select("body");
     let head = doc.select("head");
 
-    scan_body(body.clone(), &editor)?;
-    scan_body(head.clone(), &editor)?;
+    walk_tree(body.clone(), &editor)?;
+    walk_tree(head.clone(), &editor)?;
 
     Ok(doc.html().to_string())
 }
 
-fn scan_body(
-    sel: Selection,
-    editor: &impl Fn(String) -> Result<String, Error>,
-) -> Result<(), Error> {
+fn walk_tree(sel: Selection, editor: &impl Fn(String, bool) -> EditRet) -> Result<(), Error> {
     for child in sel.children().iter() {
-        if child.is("div") || child.is("span") {
-            for deeper_child in child.children().iter() {
-                scan_body(deeper_child.clone(), editor)?;
+        let deeper_child = child.children();
+        if !deeper_child.is_empty() {
+            for dc in deeper_child.iter() {
+                walk_tree(dc.clone(), editor)?;
             }
             continue;
         }
@@ -81,13 +89,17 @@ fn scan_body(
         }
     }
 
+    for attr in EDITABLE_ATTRS {
+        replace_if_present(sel.clone(), attr, editor)?;
+    }
+
     Ok(())
 }
 
 fn replace_if_present(
     sel: Selection,
     attr: &str,
-    editor: impl Fn(String) -> Result<String, Error>,
+    editor: impl Fn(String, bool) -> EditRet,
 ) -> Result<(), Error> {
     if sel.has_attr(attr) {
         let curr_attr = sel.attr(attr).unwrap().to_string();
@@ -95,7 +107,12 @@ fn replace_if_present(
             // bypass externally-referenced resources
             return Ok(());
         }
-        sel.set_attr(attr, &editor(sel.attr(attr).unwrap().to_string())?)
+
+        let is_a = sel.is("a");
+
+        if let Some(new_attr) = editor(sel.attr(attr).unwrap().to_string(), is_a)? {
+            sel.set_attr(attr, &new_attr)
+        }
     }
 
     Ok(())

@@ -66,6 +66,7 @@ pub struct InputData {
 pub struct PageData {
     pub page: Page,
     pub id: AtIdentifier,
+    pub rkey: Option<String>,
 }
 
 impl From<PageData> for InputData {
@@ -74,7 +75,7 @@ impl From<PageData> for InputData {
             collection: Page::nsid(),
             record: value.page.into(),
             repo: value.id,
-            rkey: Some(tsid::create_tsid().to_string()),
+            rkey: Some(value.rkey.unwrap_or(tsid::create_tsid().to_string())),
             swap_commit: None,
             validate: None,
         }

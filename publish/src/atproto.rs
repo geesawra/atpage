@@ -25,11 +25,28 @@ impl IdentityData {
         format!("/at/{}/blobs/{}", did.to_string(), blob)
     }
 
-    pub async fn upload_page(&self, page: lexicon::Page) -> Result<create_record::Output> {
-        let request = &lexicon::post_page(lexicon::PageData {
+    pub fn format_record_uri(&self, rkey: String) -> String {
+        let did = match self.handle.clone() {
+            AtIdentifier::Did(d) => d.to_string(),
+            AtIdentifier::Handle(h) => h.to_string(),
+        };
+        format!(
+            "/at/{}/industries.geesawra.website/{}",
+            did.to_string(),
+            rkey
+        )
+    }
+
+    pub fn generate_page_data(&self, page: lexicon::Page) -> lexicon::PageData {
+        lexicon::PageData {
             page,
             id: self.did.clone(),
-        });
+            rkey: Some(tsid::create_tsid().to_string()),
+        }
+    }
+
+    pub async fn upload_page(&self, page_data: lexicon::PageData) -> Result<create_record::Output> {
+        let request = &lexicon::post_page(page_data);
 
         let res = self
             .client
