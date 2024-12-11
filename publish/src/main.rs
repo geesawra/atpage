@@ -1,17 +1,10 @@
-use std::{path::PathBuf, str::FromStr, sync::Arc};
-
 use anyhow::{Context, Result};
-use atrium_api::{
-    agent::{store::MemorySessionStore, AtpAgent},
-    com::atproto::repo::create_record,
-};
-
-use atrium_xrpc_client::reqwest::{ReqwestClient, ReqwestClientBuilder};
-use bsky_sdk::api::{types::string::AtIdentifier, xrpc::XrpcClient};
 use envconfig::Envconfig;
 use html::{scan_html, walk_html};
-use http::{header::AUTHORIZATION, HeaderMap, HeaderValue};
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
+
+mod atproto;
 mod html;
 mod lexicon;
 
@@ -30,52 +23,6 @@ struct LoginCredential {
     src: String,
 }
 
-struct IdentityData {
-    did: AtIdentifier,
-    handle: AtIdentifier,
-    client: ReqwestClient,
-    agent: AtpAgent<MemorySessionStore, ReqwestClient>,
-}
-
-impl IdentityData {
-    /// Returns a logged-in ReqwestClient that can be used to perform POST requests.
-    async fn login(ld: LoginCredential) -> Result<Self> {
-        let c = ReqwestClientBuilder::new(ld.pds.clone()).build();
-
-        let agent = AtpAgent::new(c.clone(), MemorySessionStore::default());
-
-        let session = agent
-            .login(ld.username, ld.password)
-            .await
-            .with_context(|| "Can't login with provided credentials")?;
-
-        let mut headers = HeaderMap::new();
-
-        let access_str = format!("Bearer {}", session.access_jwt.clone());
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(access_str.as_str())
-                .with_context(|| "Authorization token provided by PDS is not a valid string")?,
-        );
-
-        let rc = reqwest::ClientBuilder::new()
-            .default_headers(headers)
-            .build()
-            .with_context(|| {
-                "Can't construct HTTP client with the Authorization headers built after login"
-            })?;
-
-        let c = ReqwestClientBuilder::new(ld.pds.clone()).client(rc).build();
-
-        Ok(IdentityData {
-            did: AtIdentifier::Did(session.did.clone()),
-            handle: AtIdentifier::Handle(session.handle.clone()),
-            client: c,
-            agent,
-        })
-    }
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
     let ld = match LoginCredential::init_from_env() {
@@ -88,7 +35,10 @@ async fn main() -> Result<()> {
 
     let content_dir = PathBuf::from_str(&ld.src).unwrap();
 
-    let c = Arc::new(Mutex::new(IdentityData::login(ld).await?));
+    let c = Arc::new(Mutex::new(
+        atproto::IdentityData::login(ld.username.clone(), ld.password.clone(), ld.pds.clone())
+            .await?,
+    ));
 
     for f in walk_html(content_dir.clone())? {
         let refs = Arc::new(Mutex::new(vec![]));
@@ -109,33 +59,13 @@ async fn main() -> Result<()> {
 
                 let c = c.lock().await;
 
-                let res = c
-                    .agent
-                    .api
-                    .com
-                    .atproto
-                    .repo
-                    .upload_blob(blob_content) // TODO(gsora): actually pass blob
-                    .await
-                    .unwrap();
-
-                let blob_ref = match res.blob.clone() {
-                    atrium_api::types::BlobRef::Typed(t) => {
-                        let r = match t {
-                            atrium_api::types::TypedBlobRef::Blob(b) => b,
-                        };
-
-                        let cid = r.r#ref.0;
-                        cid.to_string_of_base(multibase::Base::Base32Lower).unwrap()
-                    }
-                    atrium_api::types::BlobRef::Untyped(u) => u.cid,
-                };
+                let (blob, blob_ref) = c.upload_blob(blob_content).await?;
 
                 println!("Uploading {:?} to blob ref {}", blob_path, blob_ref);
 
-                refs.lock().await.push(res.blob.clone());
+                refs.lock().await.push(blob);
 
-                Ok(format_blob_uri(blob_ref, c.handle.clone()))
+                Ok(c.format_blob_uri(blob_ref))
             });
 
             blob_ref
@@ -146,38 +76,9 @@ async fn main() -> Result<()> {
             embeds: Some(refs.lock().await.clone()),
         };
 
-        let request = &lexicon::post_page(lexicon::PageData {
-            page,
-            id: c.lock().await.did.clone(),
-        });
+        let res = c.lock().await.upload_page(page).await?;
 
-        let res = c
-            .lock()
-            .await
-            .client
-            .send_xrpc::<(), lexicon::InputData, create_record::Output, create_record::Error>(
-                request,
-            )
-            .await
-            .with_context(|| "Can't write webpage to PDS")?;
-
-        match res {
-            atrium_xrpc::OutputDataOrBytes::Data(data) => {
-                println!("Created new ATPage at uri {}", data.uri);
-            }
-            atrium_xrpc::OutputDataOrBytes::Bytes(_) => {
-                unimplemented!("cannot have bytes response here!")
-            }
-        };
+        println!("Created new ATPage at uri {}", res.uri);
     }
     Ok(())
-}
-
-fn format_blob_uri(blob: String, did: AtIdentifier) -> String {
-    let did = match did {
-        AtIdentifier::Did(d) => d.to_string(),
-        AtIdentifier::Handle(h) => h.to_string(),
-    };
-
-    format!("/at/{}/blobs/{}", did, blob)
 }

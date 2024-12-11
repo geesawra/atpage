@@ -1,0 +1,106 @@
+use anyhow::{anyhow, Context, Result};
+use atrium_api::{
+    agent::{store::MemorySessionStore, AtpAgent},
+    com::atproto::repo::create_record,
+    types::{string::AtIdentifier, BlobRef},
+};
+use atrium_xrpc::XrpcClient;
+use atrium_xrpc_client::reqwest::{ReqwestClient, ReqwestClientBuilder};
+use http::{header::AUTHORIZATION, HeaderMap, HeaderValue};
+
+use crate::lexicon;
+pub(crate) struct IdentityData {
+    pub did: AtIdentifier,
+    pub handle: AtIdentifier,
+    client: ReqwestClient,
+    agent: AtpAgent<MemorySessionStore, ReqwestClient>,
+}
+
+impl IdentityData {
+    pub fn format_blob_uri(&self, blob: String) -> String {
+        let did = match self.handle.clone() {
+            AtIdentifier::Did(d) => d.to_string(),
+            AtIdentifier::Handle(h) => h.to_string(),
+        };
+        format!("/at/{}/blobs/{}", did.to_string(), blob)
+    }
+
+    pub async fn upload_page(&self, page: lexicon::Page) -> Result<create_record::Output> {
+        let request = &lexicon::post_page(lexicon::PageData {
+            page,
+            id: self.did.clone(),
+        });
+
+        let res = self
+            .client
+            .send_xrpc::<(), lexicon::InputData, create_record::Output, create_record::Error>(
+                &request,
+            )
+            .await
+            .with_context(|| "Can't write webpage to PDS")?;
+
+        match res {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => {
+                // println!("Created new ATPage at uri {}", data.uri);
+                Ok(data)
+            }
+            atrium_xrpc::OutputDataOrBytes::Bytes(_) => {
+                Err(anyhow!("received bytes from post_page call, impossible!"))
+            }
+        }
+    }
+    pub async fn upload_blob(&self, data: Vec<u8>) -> Result<(BlobRef, String)> {
+        let res = self.agent.api.com.atproto.repo.upload_blob(data).await?;
+
+        match res.blob.clone() {
+            atrium_api::types::BlobRef::Typed(t) => {
+                let r = match t {
+                    atrium_api::types::TypedBlobRef::Blob(b) => b,
+                };
+
+                let cid = r.r#ref.0;
+                Ok((
+                    res.blob.clone(),
+                    cid.to_string_of_base(multibase::Base::Base32Lower)?,
+                ))
+            }
+            atrium_api::types::BlobRef::Untyped(u) => Ok((res.blob.clone(), u.cid)),
+        }
+    }
+    /// Returns a logged-in ReqwestClient that can be used to perform POST requests.
+    pub async fn login(username: String, password: String, pds: String) -> Result<Self> {
+        let c = ReqwestClientBuilder::new(pds.clone()).build();
+
+        let agent = AtpAgent::new(c.clone(), MemorySessionStore::default());
+
+        let session = agent
+            .login(username, password)
+            .await
+            .with_context(|| "Can't login with provided credentials")?;
+
+        let mut headers = HeaderMap::new();
+
+        let access_str = format!("Bearer {}", session.access_jwt.clone());
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(access_str.as_str())
+                .with_context(|| "Authorization token provided by PDS is not a valid string")?,
+        );
+
+        let rc = reqwest::ClientBuilder::new()
+            .default_headers(headers)
+            .build()
+            .with_context(|| {
+                "Can't construct HTTP client with the Authorization headers built after login"
+            })?;
+
+        let c = ReqwestClientBuilder::new(pds).client(rc).build();
+
+        Ok(IdentityData {
+            did: AtIdentifier::Did(session.did.clone()),
+            handle: AtIdentifier::Handle(session.handle.clone()),
+            client: c,
+            agent,
+        })
+    }
+}
