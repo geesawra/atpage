@@ -1,15 +1,8 @@
 use anyhow::{Context, Result};
 use atrium_api::types::BlobRef;
 use envconfig::Envconfig;
-use futures::FutureExt;
 use html::{scan_html, scan_html_path, walk_html};
-use lexicon::Page;
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 
 mod atproto;
