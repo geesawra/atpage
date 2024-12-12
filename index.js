@@ -1,4 +1,4 @@
-let homepage = "/at/geesawra.industries/industries.geesawra.website/0J5JEFTYV8MFQ";
+let homepage = "/at/geesawra.industries/industries.geesawra.website/0J5SYQ0SVQTKF";
 
 navigator.serviceWorker.ready.then(() => {
   window.location.replace(homepage);

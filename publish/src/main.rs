@@ -1,40 +1,32 @@
 use anyhow::{Context, Result};
 use atrium_api::types::BlobRef;
-use envconfig::Envconfig;
+use clap::Parser;
 use html::{scan_html, scan_html_path, walk_html};
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 
 mod atproto;
+mod cli;
 mod html;
 mod lexicon;
 
-#[derive(Envconfig)]
-struct LoginCredential {
-    #[envconfig(from = "PUBLISH_USERNAME")]
-    username: String,
-
-    #[envconfig(from = "PUBLISH_PASSWORD")]
-    password: String,
-
-    #[envconfig(from = "PUBLISH_PDS", default = "https://bsky.app")]
-    pds: String,
-
-    #[envconfig(from = "PUBLISH_SRC")]
-    src: String,
-}
-
 #[tokio::main]
 async fn main() -> Result<()> {
-    let ld = match LoginCredential::init_from_env() {
-        Ok(ld) => ld,
-        Err(error) => {
-            eprintln!("Error: {}", error);
-            std::process::exit(42);
-        }
-    };
+    match cli::Command::parse() {
+        cli::Command::Post { login_data, src } => post(login_data, src).await,
+        cli::Command::Nuke(login_data) => nuke(login_data).await,
+    }
+}
 
-    let content_dir = PathBuf::from_str(&ld.src).unwrap();
+async fn nuke(ld: cli::LoginData) -> Result<()> {
+    let c = atproto::IdentityData::login(ld.username.clone(), ld.password.clone(), ld.pds.clone())
+        .await?;
+
+    c.nuke().await
+}
+
+async fn post(ld: cli::LoginData, src: String) -> Result<()> {
+    let content_dir = PathBuf::from_str(&src.clone()).unwrap();
 
     let c = Arc::new(Mutex::new(
         atproto::IdentityData::login(ld.username.clone(), ld.password.clone(), ld.pds.clone())

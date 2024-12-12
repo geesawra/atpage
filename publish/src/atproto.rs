@@ -1,8 +1,8 @@
 use anyhow::{anyhow, Context, Result};
 use atrium_api::{
     agent::{store::MemorySessionStore, AtpAgent},
-    com::atproto::repo::create_record,
-    types::{string::AtIdentifier, BlobRef},
+    com::atproto::repo::{create_record, delete_record, list_records},
+    types::{string::AtIdentifier, BlobRef, Collection},
 };
 use atrium_xrpc::XrpcClient;
 use atrium_xrpc_client::reqwest::{ReqwestClient, ReqwestClientBuilder};
@@ -66,6 +66,60 @@ impl IdentityData {
             }
         }
     }
+
+    pub async fn nuke(&self) -> Result<()> {
+        loop {
+            let records = self
+                .agent
+                .api
+                .com
+                .atproto
+                .repo
+                .list_records(
+                    list_records::ParametersData {
+                        collection: lexicon::Page::nsid(),
+                        cursor: None,
+                        limit: None,
+                        repo: self.did.clone(),
+                        reverse: None,
+                        rkey_end: None,
+                        rkey_start: None,
+                    }
+                    .into(),
+                )
+                .await?;
+
+            if records.records.is_empty() {
+                break;
+            }
+
+            for r in records.records.iter() {
+                let ru: ATURL = r.uri.clone().try_into()?;
+
+                println!("Deleting record: {}", r.uri.clone());
+
+                self.agent
+                    .api
+                    .com
+                    .atproto
+                    .repo
+                    .delete_record(
+                        delete_record::InputData {
+                            collection: lexicon::Page::nsid(),
+                            repo: self.did.clone(),
+                            rkey: ru.key.clone(),
+                            swap_commit: None,
+                            swap_record: None,
+                        }
+                        .into(),
+                    )
+                    .await?;
+            }
+        }
+
+        Ok(())
+    }
+
     pub async fn upload_blob(&self, data: Vec<u8>) -> Result<(BlobRef, String)> {
         let res = self.agent.api.com.atproto.repo.upload_blob(data).await?;
 
@@ -84,6 +138,7 @@ impl IdentityData {
             atrium_api::types::BlobRef::Untyped(u) => Ok((res.blob.clone(), u.cid)),
         }
     }
+
     /// Returns a logged-in ReqwestClient that can be used to perform POST requests.
     pub async fn login(username: String, password: String, pds: String) -> Result<Self> {
         let c = ReqwestClientBuilder::new(pds.clone()).build();
@@ -118,6 +173,41 @@ impl IdentityData {
             handle: AtIdentifier::Handle(session.handle.clone()),
             client: c,
             agent,
+        })
+    }
+}
+
+// TODO(geesawra): this should be at crate-level, shared with the wasm part
+#[allow(unused)]
+#[derive(Debug)]
+pub struct ATURL {
+    pub did: String,
+    pub collection: String,
+    pub key: String,
+    pub blob: bool,
+}
+
+impl TryFrom<String> for ATURL {
+    type Error = anyhow::Error;
+
+    fn try_from(value: String) -> Result<Self> {
+        let value = match value.strip_prefix("at://") {
+            Some(v) => v,
+            None => return Err(anyhow!("url does not begin with at://")),
+        };
+
+        let comp = value.split("/").collect::<Vec<&str>>();
+
+        if comp.len() != 3 {
+            println!("{}", value);
+            return Err(anyhow!("malformed AT URL, more than 3 components in URL"));
+        }
+
+        Ok(ATURL {
+            did: comp[0].to_string(),
+            collection: comp[1].to_string(),
+            key: comp[2].to_string(),
+            blob: comp[1].to_string() == "blobs",
         })
     }
 }

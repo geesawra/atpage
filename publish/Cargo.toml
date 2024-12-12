@@ -9,6 +9,7 @@ atrium-api = "0.24.8"
 atrium-xrpc = "0.12.0"
 atrium-xrpc-client = "0.5.10"
 bsky-sdk = "0.1.13"
+clap = { version = "4.5.23", features = ["env", "derive"] }
 directories = "5.0.1"
 dom_query = "0.11.0"
 envconfig = "0.11.0"
