@@ -4,9 +4,14 @@ navigator.serviceWorker.ready.then(() => {
   window.location.replace(homepage);
 });
 
+var sw_path = "./sw.js";
+
+if (navigator.userAgent.toLowerCase().indexOf('firefox') !== -1) {
+  sw_path = "./sw_nomod.js";
+}
 if ("serviceWorker" in navigator) {
   try {
-    const registration = await navigator.serviceWorker.register("./sw.js", {
+    const registration = await navigator.serviceWorker.register(sw_path, {
       type: "module",
     });
 

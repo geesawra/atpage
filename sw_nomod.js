@@ -1,4 +1,6 @@
-import init, { resolve, init_wasm_log } from "./mod/atpage.js";
+importScripts("./nomod/atpage.js");
+
+const { resolve, init_wasm_log } = wasm_bindgen;
 
 var initialized = false;
 
@@ -15,11 +17,14 @@ self.addEventListener("fetch", (event) => {
     (async () => {
       try {
         if (!initialized) {
-          await init().then(() => {
+          await wasm_bindgen({ module_or_path: "./nomod/atpage_bg.wasm" }).then(() => {
+            console.log("initialize_wasm finished running!()");
             init_wasm_log();
             initialized = true;
-          });
+          })
         }
+
+        console.log("was initialized:", initialized);
         const res = await resolve(event);
         return res;
       } catch (error) {
@@ -29,3 +34,4 @@ self.addEventListener("fetch", (event) => {
     })()
   );
 });
+

@@ -2,11 +2,17 @@
 
 build: 
 	wasm-pack build --release --no-typescript --target web
-	mkdir -p public/pkg
-	cp pkg/* public/pkg
+	mkdir -p public/mod
+	cp pkg/* public/mod
+
+	rm -rf pkg	
+	wasm-pack build --release --no-typescript --target no-modules
+	mkdir -p public/nomod
+	cp pkg/* public/nomod
+	
 	cp index.html public
 	cp index.js public
-	cp sw.js public
+	cp sw*.js public
 	rm -rf pkg
 
 clean:
