@@ -1,4 +1,11 @@
-let homepage = "/at/geesawra.industries/industries.geesawra.website/0J5SYQ0SVQTKF";
+var homepage = "/at/geesawra.industries/industries.geesawra.website/0J752KTKC1NYS";
+
+const location_params = new URLSearchParams(window.location.search);
+const redir_url = String(location_params.get('redir'));
+
+if (redir_url != null && redir_url.startsWith("/at/")) {
+  homepage = redir_url;
+}
 
 navigator.serviceWorker.ready.then(() => {
   window.location.replace(homepage);
