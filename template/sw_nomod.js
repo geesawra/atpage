@@ -1,4 +1,4 @@
-importScripts("./nomod/atpage.js");
+importScripts("./nomod/atpage_renderer.js");
 
 const { resolve, init_wasm_log } = wasm_bindgen;
 
@@ -17,7 +17,7 @@ self.addEventListener("fetch", (event) => {
     (async () => {
       try {
         if (!initialized) {
-          await wasm_bindgen({ module_or_path: "./nomod/atpage_bg.wasm" }).then(() => {
+          await wasm_bindgen({ module_or_path: "./nomod/atpage_renderer_bg.wasm" }).then(() => {
             console.log("initialize_wasm finished running!()");
             init_wasm_log();
             initialized = true;

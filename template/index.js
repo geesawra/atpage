@@ -1,4 +1,4 @@
-var homepage = "/at/geesawra.industries/industries.geesawra.website/0J752KTKC1NYS";
+var homepage = "REPLACE_ME";
 
 const location_params = new URLSearchParams(window.location.search);
 const redir_url = String(location_params.get('redir'));

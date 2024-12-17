@@ -1,3 +1,4 @@
+use shared::atproto::ATURL;
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -13,7 +14,7 @@ pub enum Error {
     NoPDSFound(String),
     JSError(JsValue),
     JSSerdeError(serde_wasm_bindgen::Error),
-    MalformedATURL(String),
+    MalformedATURL(shared::atproto::Error),
 }
 
 impl From<JsValue> for Error {
@@ -80,34 +81,7 @@ pub fn parse_at_url(u: String) -> Option<Result<ATURL, Error>> {
 
     jsu.pathname()
         .strip_prefix("/at/")
-        .map(|e| TryFrom::try_from(e.to_string()))
-}
-
-#[derive(Debug)]
-pub struct ATURL {
-    pub did: String,
-    pub collection: String,
-    pub key: String,
-    pub blob: bool,
-}
-
-impl TryFrom<String> for ATURL {
-    type Error = Error;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        let comp = value.split("/").collect::<Vec<&str>>();
-
-        if comp.len() != 3 {
-            return Err(Error::MalformedATURL(value));
-        }
-
-        Ok(ATURL {
-            did: comp[0].to_string(),
-            collection: comp[1].to_string(),
-            key: comp[2].to_string(),
-            blob: comp[1].to_string() == "blobs",
-        })
-    }
+        .map(|e| TryFrom::try_from(e.to_string()).map_err(|e| Error::MalformedATURL(e)))
 }
 
 pub async fn solve_did(handle: String) -> Result<String, Error> {

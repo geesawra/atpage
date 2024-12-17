@@ -1,4 +1,4 @@
-import init, { resolve, init_wasm_log } from "./mod/atpage.js";
+import init, { resolve, init_wasm_log } from "./mod/atpage_renderer.js";
 
 var initialized = false;
 

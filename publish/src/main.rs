@@ -2,16 +2,18 @@ use anyhow::{Context, Result};
 use atrium_api::types::BlobRef;
 use clap::Parser;
 use html::{scan_html, scan_html_path, walk_html};
+use shared::cli;
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
 
 mod atproto;
-mod cli;
 mod html;
 mod lexicon;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
+
     match cli::Command::parse() {
         cli::Command::Post { login_data, src } => post(login_data, src).await,
         cli::Command::Nuke(login_data) => nuke(login_data).await,
@@ -39,7 +41,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
     // step 1: upload blobs as they appear alongside raw pages
     for f in walk_html(content_dir.clone())? {
         let refs = Arc::new(Mutex::new(vec![]));
-        println!("Processing blobs for page {:?}", f);
+        log::debug!("Processing blobs for page {:?}", f);
 
         let pages = pages.clone();
         let page_content = scan_html_path(f.clone(), |src, is_a| {
@@ -74,7 +76,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
 
                 let (blob, blob_ref) = c.upload_blob(blob_content).await?;
 
-                println!("Uploading {:?} to blob ref {}", blob_path, blob_ref);
+                log::debug!("Uploading {:?} to blob ref {}", blob_path, blob_ref);
 
                 refs.lock().await.push(blob.clone());
                 dedup
@@ -96,8 +98,6 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
         let stripped_path = to_html_path(f, content_dir.clone())?;
 
         pages.lock().await.insert(stripped_path, page_data.clone());
-
-        println!("");
     }
 
     // step 2: overwrite <a> tags
@@ -105,7 +105,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
     let mut index_address = String::new();
 
     for f in walk_html(content_dir.clone())? {
-        println!("Processing page upload: {}", f.display());
+        log::debug!("Processing page upload: {}", f.display());
 
         let stripped_path = to_html_path(f.clone(), content_dir.clone())?;
 
@@ -154,14 +154,15 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
 
         let res = c.lock().await.upload_page(new_page_data.clone()).await?;
 
-        print!("Created new ATPage at uri {}\n\n", res.uri);
+        log::debug!("Created new ATPage at uri {}", res.uri);
 
         if f.ends_with("index.html") {
             index_address = res.uri.to_string();
         }
     }
 
-    println!("Index page can be found here: {}", index_address);
+    // not using log here, needs to be picked up by caller process;
+    println!("{index_address}");
 
     Ok(())
 }

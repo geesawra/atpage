@@ -7,6 +7,7 @@ use atrium_api::{
 use atrium_xrpc::XrpcClient;
 use atrium_xrpc_client::reqwest::{ReqwestClient, ReqwestClientBuilder};
 use http::{header::AUTHORIZATION, HeaderMap, HeaderValue};
+use shared::atproto::ATURL;
 
 use crate::lexicon;
 pub(crate) struct IdentityData {
@@ -173,41 +174,6 @@ impl IdentityData {
             handle: AtIdentifier::Handle(session.handle.clone()),
             client: c,
             agent,
-        })
-    }
-}
-
-// TODO(geesawra): this should be at crate-level, shared with the wasm part
-#[allow(unused)]
-#[derive(Debug)]
-pub struct ATURL {
-    pub did: String,
-    pub collection: String,
-    pub key: String,
-    pub blob: bool,
-}
-
-impl TryFrom<String> for ATURL {
-    type Error = anyhow::Error;
-
-    fn try_from(value: String) -> Result<Self> {
-        let value = match value.strip_prefix("at://") {
-            Some(v) => v,
-            None => return Err(anyhow!("url does not begin with at://")),
-        };
-
-        let comp = value.split("/").collect::<Vec<&str>>();
-
-        if comp.len() != 3 {
-            println!("{}", value);
-            return Err(anyhow!("malformed AT URL, more than 3 components in URL"));
-        }
-
-        Ok(ATURL {
-            did: comp[0].to_string(),
-            collection: comp[1].to_string(),
-            key: comp[2].to_string(),
-            blob: comp[1].to_string() == "blobs",
         })
     }
 }

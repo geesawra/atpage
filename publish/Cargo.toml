@@ -23,3 +23,6 @@ serde_json = "1.0.133"
 thiserror = "2.0.6"
 tokio = { version = "1.41.1", features = ["full"] }
 tsid = "0.3.1"
+shared = {path = "../shared" }
+log = "0.4.22"
+env_logger = "0.11.5"

@@ -20,11 +20,14 @@ pub async fn resolve(event: web_sys::FetchEvent) -> web_sys::Response {
 
     if let Some(atu) = parse_at_url(u.clone()) {
         let atu = atu.unwrap();
-        log::debug!("parsed at uri: {:?}", atu);
 
-        let did = atproto::solve_did(atu.did)
-            .await
-            .expect_throw("can't solve did");
+        let did = match atu.needs_resolution {
+            true => atproto::solve_did(atu.did)
+                .await
+                .expect_throw("can't solve did"),
+            false => atu.did,
+        };
+
         let pds = atproto::solve_pds(did.clone())
             .await
             .expect_throw("can't find pds for did");
