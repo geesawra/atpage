@@ -1,10 +1,9 @@
 var homepage = "REPLACE_ME";
 
-const location_params = new URLSearchParams(window.location.search);
-const redir_url = String(location_params.get('redir'));
+let current_location = window.location.pathname;
 
-if (redir_url != null && redir_url.startsWith("/at/")) {
-  homepage = redir_url;
+if (current_location != null && current_location != "/"  && current_location.startsWith("/at/")) {
+  homepage = current_location;
 }
 
 navigator.serviceWorker.ready.then(() => {
