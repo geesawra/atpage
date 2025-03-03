@@ -1,7 +1,7 @@
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use atrium_api::types::BlobRef;
 use clap::Parser;
-use html::{scan_html, scan_html_path, walk_html};
+use html::{page_title, scan_html, scan_html_path, walk_html};
 use shared::cli;
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
@@ -44,7 +44,21 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
         log::debug!("Processing blobs for page {:?}", f);
 
         let pages = pages.clone();
-        let page_content = scan_html_path(f.clone(), |src, is_a| {
+
+        let content = std::fs::read(f.clone())?;
+        let content = String::from_utf8(content)?;
+
+        let page_title = match page_title(content.clone()) {
+            Some(title) => title,
+            None => {
+                return Err(anyhow!(
+                    "found page {:?} without title, need one to create an atpage!",
+                    f
+                ));
+            }
+        };
+
+        let page_content = scan_html(content.clone(), |src, is_a| {
             if is_a {
                 // ignore <a> at this point
                 return Ok(None);
@@ -74,6 +88,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
 
                 let c = c.lock().await;
 
+                // TODO(gsora): check if a given blob_content is already on the PDS?
                 let (blob, blob_ref) = c.upload_blob(blob_content).await?;
 
                 log::debug!("Uploading {:?} to blob ref {}", blob_path, blob_ref);
@@ -89,6 +104,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
         })?;
 
         let page = lexicon::Page {
+            title: page_title,
             content: page_content,
             embeds: Some(refs.lock().await.clone()),
         };
@@ -145,6 +161,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
 
         let new_page_data = lexicon::PageData {
             page: lexicon::Page {
+                title: page_data.page.title.clone(),
                 content: page_content,
                 embeds: page_data.page.embeds.clone(),
             },
@@ -154,7 +171,11 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
 
         let res = c.lock().await.upload_page(new_page_data.clone()).await?;
 
-        log::debug!("Created new ATPage at uri {}", res.uri);
+        log::debug!(
+            "Created new ATPage at uri {} with rkey {}",
+            res.uri,
+            new_page_data.rkey.unwrap(),
+        );
 
         if f.ends_with("index.html") {
             index_address = res.uri.to_string();

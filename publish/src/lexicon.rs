@@ -37,6 +37,7 @@ impl Collection for Page {
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct Page {
+    pub title: String,
     pub content: String,
     #[serde(skip_serializing_if = "core::option::Option::is_none")]
     pub embeds: core::option::Option<Vec<types::BlobRef>>,

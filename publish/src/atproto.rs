@@ -39,10 +39,11 @@ impl IdentityData {
     }
 
     pub fn generate_page_data(&self, page: lexicon::Page) -> lexicon::PageData {
+        let rkey = sha256::digest(page.title.clone());
         lexicon::PageData {
             page,
             id: self.did.clone(),
-            rkey: Some(tsid::create_tsid().to_string()),
+            rkey: Some(rkey),
         }
     }
 

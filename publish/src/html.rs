@@ -74,6 +74,17 @@ pub fn scan_html(data: String, editor: impl Fn(String, bool) -> EditRet) -> Resu
     Ok(doc.html().to_string())
 }
 
+/// page_title returns the HTML title extracted from <title> tags.
+pub fn page_title(data: String) -> Option<String> {
+    let doc = dom_query::Document::from(data);
+    let title = doc.select("head").select("title").inner_html().to_string();
+
+    match title.len() {
+        0 => None,
+        _ => Some(title),
+    }
+}
+
 fn walk_tree(sel: Selection, editor: &impl Fn(String, bool) -> EditRet) -> Result<(), Error> {
     for child in sel.children().iter() {
         let deeper_child = child.children();
