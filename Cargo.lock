@@ -154,6 +154,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
+name = "atpage_publisher"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "atrium-api",
+ "atrium-xrpc",
+ "atrium-xrpc-client",
+ "bsky-sdk",
+ "clap",
+ "directories",
+ "dom_query",
+ "env_logger",
+ "envconfig",
+ "futures",
+ "html",
+ "http",
+ "log",
+ "multibase",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha256",
+ "shared",
+ "thiserror 2.0.12",
+ "tokio",
+ "tsid",
+]
+
+[[package]]
 name = "atpage_renderer"
 version = "0.1.0"
 dependencies = [
@@ -1849,35 +1878,6 @@ name = "psl-types"
 version = "2.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "33cb294fe86a74cbcf50d4445b37da762029549ebeea341421c7c70370f86cac"
-
-[[package]]
-name = "publish"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "atrium-api",
- "atrium-xrpc",
- "atrium-xrpc-client",
- "bsky-sdk",
- "clap",
- "directories",
- "dom_query",
- "env_logger",
- "envconfig",
- "futures",
- "html",
- "http",
- "log",
- "multibase",
- "reqwest",
- "serde",
- "serde_json",
- "sha256",
- "shared",
- "thiserror 2.0.12",
- "tokio",
- "tsid",
-]
 
 [[package]]
 name = "quote"

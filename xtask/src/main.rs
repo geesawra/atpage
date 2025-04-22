@@ -68,6 +68,9 @@ fn publish(ld: LoginData, src: String) -> Result<String> {
 fn nuke(ld: LoginData) -> Result<()> {
     let sh = Shell::new()?;
 
+    // compile atpage_publisher
+    cmd!(sh, "cargo build --release --package atpage_publisher").run()?;
+
     let (username, password, pds) = (ld.username, ld.password, ld.pds);
     Ok(cmd!(
         sh,
