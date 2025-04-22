@@ -52,13 +52,13 @@ fn compile_all() -> Result<()> {
 fn publish(ld: LoginData, src: String) -> Result<String> {
     let sh = Shell::new()?;
 
-    // compile publish
-    cmd!(sh, "cargo build --release --package publish").run()?;
+    // compile atpage_publisher
+    cmd!(sh, "cargo build --release --package atpage_publisher").run()?;
 
     let (username, password, pds) = (ld.username, ld.password, ld.pds);
     let res = cmd!(
         sh,
-        "target/release/publish post --username {username} --password {password} --src {src} --pds {pds}"
+        "target/release/atpage_publisher post --username {username} --password {password} --src {src} --pds {pds}"
     )
     .read()?;
 
@@ -71,7 +71,7 @@ fn nuke(ld: LoginData) -> Result<()> {
     let (username, password, pds) = (ld.username, ld.password, ld.pds);
     Ok(cmd!(
         sh,
-        "target/release/publish nuke --username {username} --password {password} --pds {pds}"
+        "target/release/atpage_publisher nuke --username {username} --password {password} --pds {pds}"
     )
     .run()?)
 }

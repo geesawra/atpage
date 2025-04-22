@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
     match cli::Command::parse() {
         cli::Command::Post { login_data, src } => post(login_data, src).await,
         cli::Command::Nuke(login_data) => nuke(login_data).await,
-        cli::Command::Compile => Ok(()),
+        cli::Command::Compile { at_uri: _ } => Ok(()),
     }
 }
 

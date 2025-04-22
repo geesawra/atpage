@@ -1,10 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-    "atpage_renderer",
-    "publish", "shared",
-    "xtask",
-]
+members = ["atpage_renderer", "atpage_publisher", "shared", "xtask"]
 
 [profile.release]
 opt-level = 'z'
