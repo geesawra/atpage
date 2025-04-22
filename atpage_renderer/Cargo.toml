@@ -10,7 +10,22 @@ crate-type = ["cdylib"]
 wasm-bindgen = "0.2.95"
 js-sys = "0.3.72"
 wasm-bindgen-futures = "0.4.45"
-web-sys = { version = "0.3.72", features = ['Worker', 'Request', 'Headers', 'RequestInit', 'ResponseInit', 'RequestMode', 'Response', 'FetchEvent', 'ServiceWorkerGlobalScope', 'Clients', 'Url', 'UrlSearchParams', 'ReadableStream', 'ReadableStreamDefaultReader'] }
+web-sys = { version = "0.3.72", features = [
+    'Worker',
+    'Request',
+    'Headers',
+    'RequestInit',
+    'ResponseInit',
+    'RequestMode',
+    'Response',
+    'FetchEvent',
+    'ServiceWorkerGlobalScope',
+    'Clients',
+    'Url',
+    'UrlSearchParams',
+    'ReadableStream',
+    'ReadableStreamDefaultReader',
+] }
 serde_json = "1.0.132"
 serde = { version = "1.0.214", features = ["derive"] }
 serde-wasm-bindgen = "0.6.5"
@@ -18,3 +33,5 @@ console_error_panic_hook = "0.1.7"
 log = "0.4.22"
 wasm-logger = "0.2.0"
 shared = { path = "../shared" }
+async-once-cell = { version = "0.5.4", features = ["critical-section"] }
+tokio = { version = "1", features = ["sync"] }
