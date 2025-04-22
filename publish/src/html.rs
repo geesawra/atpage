@@ -49,17 +49,6 @@ pub fn walk_html(dir: PathBuf) -> Result<Vec<PathBuf>, Error> {
     Ok(ret)
 }
 
-/// scan_html_path calls scan_html over the content of f.
-pub fn scan_html_path(
-    f: PathBuf,
-    editor: impl Fn(String, bool) -> EditRet,
-) -> Result<String, Error> {
-    let content = std::fs::read(f)?;
-    let content = String::from_utf8(content)?;
-
-    scan_html(content, editor)
-}
-
 /// scan_html scans the HTML contained in data, and runs editor on the content of the tree.
 /// editor implementors will receive the content of either an src or href tag attribute, and
 /// a boolean that's true if the attribute is on an <a> tag.

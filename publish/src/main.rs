@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Context, Result};
 use atrium_api::types::BlobRef;
 use clap::Parser;
-use html::{page_title, scan_html, scan_html_path, walk_html};
+use html::{page_title, scan_html, walk_html};
 use shared::cli;
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use tokio::sync::Mutex;
@@ -17,6 +17,7 @@ async fn main() -> Result<()> {
     match cli::Command::parse() {
         cli::Command::Post { login_data, src } => post(login_data, src).await,
         cli::Command::Nuke(login_data) => nuke(login_data).await,
+        cli::Command::Compile => Ok(()),
     }
 }
 

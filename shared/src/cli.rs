@@ -33,4 +33,10 @@ pub enum Command {
 
     /// Deletes the industries.geesawra.website from the configured PDS for the logged-in user.
     Nuke(LoginData),
+
+    /// Compiles atpage_renderer, useful for local development.
+    Compile {
+        /// AT URI containing a industries.geesawra.website collection.
+        at_uri: String,
+    },
 }

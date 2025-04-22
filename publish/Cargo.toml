@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.93"
-atrium-api = "0.24.8"
+atrium-api = "0.25.2"
 atrium-xrpc = "0.12.0"
 atrium-xrpc-client = "0.5.10"
 bsky-sdk = "0.1.13"
@@ -23,7 +23,7 @@ serde_json = "1.0.133"
 thiserror = "2.0.6"
 tokio = { version = "1.41.1", features = ["full"] }
 tsid = "0.3.1"
-shared = {path = "../shared" }
+shared = { path = "../shared" }
 log = "0.4.22"
 env_logger = "0.11.5"
 sha256 = "1.6.0"

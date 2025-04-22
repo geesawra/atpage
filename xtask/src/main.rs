@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use shared::cli::LoginData;
 use xshell::{cmd, Shell};
@@ -16,6 +16,14 @@ fn main() -> Result<()> {
             Ok(())
         }
         shared::cli::Command::Nuke(ld) => nuke(ld),
+        shared::cli::Command::Compile { at_uri } => {
+            compile_all()?;
+            if !at_uri.starts_with("at://") {
+                return Err(anyhow!("aturi argument must be a valid AT URI"));
+            }
+
+            Ok(assemble(at_uri)?)
+        }
     }
 }
 
@@ -38,14 +46,14 @@ fn compile_all() -> Result<()> {
         }
     }
 
-    // compile publish
-    cmd!(sh, "cargo build --release --package publish").run()?;
-
     Ok(())
 }
 
 fn publish(ld: LoginData, src: String) -> Result<String> {
     let sh = Shell::new()?;
+
+    // compile publish
+    cmd!(sh, "cargo build --release --package publish").run()?;
 
     let (username, password, pds) = (ld.username, ld.password, ld.pds);
     let res = cmd!(
@@ -54,7 +62,7 @@ fn publish(ld: LoginData, src: String) -> Result<String> {
     )
     .read()?;
 
-    Ok(res.replace("at://", "/at/"))
+    Ok(res)
 }
 
 fn nuke(ld: LoginData) -> Result<()> {
@@ -69,6 +77,8 @@ fn nuke(ld: LoginData) -> Result<()> {
 }
 
 fn assemble(at_uri: String) -> Result<()> {
+    let at_uri = at_uri.replace("at://", "/at/");
+
     let sh = Shell::new()?;
 
     for i in sh.read_dir("template")? {

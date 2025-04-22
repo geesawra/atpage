@@ -1,8 +1,11 @@
 use anyhow::{anyhow, Context, Result};
 use atrium_api::{
-    agent::{store::MemorySessionStore, AtpAgent},
+    agent::atp_agent::{store::MemorySessionStore, AtpAgent},
     com::atproto::repo::{create_record, delete_record, list_records},
-    types::{string::AtIdentifier, BlobRef, Collection},
+    types::{
+        string::{AtIdentifier, RecordKey},
+        BlobRef, Collection,
+    },
 };
 use atrium_xrpc::XrpcClient;
 use atrium_xrpc_client::reqwest::{ReqwestClient, ReqwestClientBuilder};
@@ -84,8 +87,6 @@ impl IdentityData {
                         limit: None,
                         repo: self.did.clone(),
                         reverse: None,
-                        rkey_end: None,
-                        rkey_start: None,
                     }
                     .into(),
                 )
@@ -109,7 +110,7 @@ impl IdentityData {
                         delete_record::InputData {
                             collection: lexicon::Page::nsid(),
                             repo: self.did.clone(),
-                            rkey: ru.key.clone(),
+                            rkey: RecordKey::new(ru.key.clone()).unwrap(),
                             swap_commit: None,
                             swap_record: None,
                         }
