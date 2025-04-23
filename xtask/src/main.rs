@@ -5,13 +5,7 @@ use xshell::{cmd, Shell};
 
 fn main() -> Result<()> {
     let is_debug_build = {
-        #[cfg(not(debug_assertions))]
-        let res = false;
-
-        #[cfg(debug_assertions)]
-        let res = true;
-
-        res
+        !std::env::var("DEBUG_BUILD").is_ok()
     };
 
     match shared::cli::Command::parse() {
