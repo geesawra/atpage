@@ -1,6 +1,6 @@
 importScripts("/nomod/atpage_renderer.js");
 
-const { resolve, init_wasm_log } = wasm_bindgen;
+const { resolve, is_at } = wasm_bindgen;
 
 var initialized = false;
 
@@ -20,17 +20,17 @@ self.addEventListener("fetch", (event) => {
           await wasm_bindgen({
             module_or_path: "/nomod/atpage_renderer_bg.wasm",
           }).then(() => {
-            console.log("initialize_wasm finished running!()");
-            init_wasm_log();
             initialized = true;
           });
         }
 
-        console.log("was initialized:", initialized);
-        const res = await resolve(event);
-        return res;
+        if (!(await is_at(event))) {
+          return fetch(event.request);
+        }
+
+        return await resolve(event);
       } catch (error) {
-        console.log("[SW] Fetch error:", error, event);
+        console.log("atpage fetch error: ", error, event);
         return;
       }
     })(),

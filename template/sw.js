@@ -1,4 +1,4 @@
-import init, { resolve, init_wasm_log } from "/mod/atpage_renderer.js";
+import init, { resolve, is_at } from "/mod/atpage_renderer.js";
 
 var initialized = false;
 
@@ -16,15 +16,17 @@ self.addEventListener("fetch", (event) => {
       try {
         if (!initialized) {
           await init().then(() => {
-            init_wasm_log();
             initialized = true;
           });
         }
-        const res = await resolve(event);
-        return res;
+
+        if (!(await is_at(event))) {
+          return fetch(event.request);
+        }
+
+        return await resolve(event);
       } catch (error) {
-        console.log("[SW] Fetch error:", error, event);
-        return;
+        console.log("atpage fetch error: ", error, event);
       }
     })(),
   );
