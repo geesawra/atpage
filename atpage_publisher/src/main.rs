@@ -12,7 +12,7 @@ mod lexicon;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    env_logger::init();
+    setup_log();
 
     match cli::Command::parse() {
         cli::Command::Post { login_data, src } => post(login_data, src).await,
@@ -21,11 +21,23 @@ async fn main() -> Result<()> {
     }
 }
 
+fn setup_log() {
+    if std::env::var("RUST_LOG").is_err() {
+        std::env::set_var("RUST_LOG", "info")
+    }
+    
+    env_logger::init();
+}
+
 async fn nuke(ld: cli::LoginData) -> Result<()> {
     let c = atproto::IdentityData::login(ld.username.clone(), ld.password.clone(), ld.pds.clone())
         .await?;
 
-    c.nuke().await
+    for deleted in c.nuke().await? {
+        log::info!("Deleted record: {}", deleted)
+    }
+
+    Ok(())
 }
 
 async fn post(ld: cli::LoginData, src: String) -> Result<()> {
@@ -89,7 +101,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
 
                 let c = c.lock().await;
 
-                // TODO(gsora): check if a given blob_content is already on the PDS?
+                // TODO(geesawra): check if a given blob_content is already on the PDS?
                 let (blob, blob_ref) = c.upload_blob(blob_content).await?;
 
                 log::debug!("Uploading {:?} to blob ref {}", blob_path, blob_ref);
@@ -122,8 +134,6 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
     let mut index_address = String::new();
 
     for f in walk_html(content_dir.clone())? {
-        log::debug!("Processing page upload: {}", f.display());
-
         let stripped_path = to_html_path(f.clone(), content_dir.clone())?;
 
         let page_data = {
@@ -172,11 +182,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
 
         let res = c.lock().await.upload_page(new_page_data.clone()).await?;
 
-        log::debug!(
-            "Created new ATPage at uri {} with rkey {}",
-            res.uri,
-            new_page_data.rkey.unwrap(),
-        );
+        log::info!("Uploaded {}: {}", f.display(), res.uri);
 
         if f.ends_with("index.html") {
             index_address = res.uri.to_string();
@@ -184,7 +190,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
     }
 
     // not using log here, needs to be picked up by caller process;
-    println!("{index_address}");
+    println!("ATPage index URI: {index_address}");
 
     Ok(())
 }

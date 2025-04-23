@@ -62,7 +62,7 @@ fn publish(ld: LoginData, src: String) -> Result<String> {
     )
     .read()?;
 
-    Ok(res)
+    Ok(res.trim_start_matches("ATPage index URI: ").to_string())
 }
 
 fn nuke(ld: LoginData) -> Result<()> {

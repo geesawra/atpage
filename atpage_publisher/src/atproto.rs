@@ -72,7 +72,8 @@ impl IdentityData {
         }
     }
 
-    pub async fn nuke(&self) -> Result<()> {
+    pub async fn nuke(&self) -> Result<Vec<String>> {
+        let mut deleted = vec![];
         loop {
             let records = self
                 .agent
@@ -99,8 +100,6 @@ impl IdentityData {
             for r in records.records.iter() {
                 let ru: ATURL = r.uri.clone().try_into()?;
 
-                println!("Deleting record: {}", r.uri.clone());
-
                 self.agent
                     .api
                     .com
@@ -117,10 +116,12 @@ impl IdentityData {
                         .into(),
                     )
                     .await?;
+
+                deleted.push(r.uri.clone());
             }
         }
 
-        Ok(())
+        Ok(deleted)
     }
 
     pub async fn upload_blob(&self, data: Vec<u8>) -> Result<(BlobRef, String)> {
