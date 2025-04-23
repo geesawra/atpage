@@ -29,6 +29,9 @@ pub enum Command {
         /// Directory containing the website to upload to the PDS.
         #[arg(long, env = "ATPAGE_SRC")]
         src: String,
+
+        /// File containing HTML OpenGraph tags.
+        opengraph_path: Option<String>,
     },
 
     /// Deletes the industries.geesawra.website from the configured PDS for the logged-in user.
@@ -38,5 +41,8 @@ pub enum Command {
     Compile {
         /// AT URI containing a industries.geesawra.website collection.
         at_uri: String,
+
+        /// File containing HTML OpenGraph tags.
+        opengraph_path: Option<String>,
     },
 }

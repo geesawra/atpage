@@ -8,7 +8,7 @@ fn main() -> Result<()> {
         if let Ok(maybe_debug_build) = std::env::var("DEBUG_BUILD") {
             match maybe_debug_build.to_lowercase().parse() {
                 Ok(v) => v,
-                Err(_) => false
+                Err(_) => false,
             }
         } else {
             false
@@ -16,26 +16,26 @@ fn main() -> Result<()> {
     };
 
     match shared::cli::Command::parse() {
-        shared::cli::Command::Post { login_data, src } => {
+        shared::cli::Command::Post { login_data, src , opengraph_path} => {
             compile_all(is_debug_build)?;
 
             println!("Posting contents of {src} as an atpage website...");
-            assemble(publish(login_data, src)?)?;
+            assemble(publish(login_data, src)?, opengraph_path)?;
 
             println!("Website posted! Now publish the contents of the `public` folder somewhere and have fun :)");
 
             Ok(())
         }
         shared::cli::Command::Nuke(ld) => nuke(ld),
-        shared::cli::Command::Compile { at_uri } => {
+        shared::cli::Command::Compile { at_uri, opengraph_path } => {
             println!("DEBUG_BUILD: {}", is_debug_build);
-            
+
             compile_all(is_debug_build)?;
             if !at_uri.starts_with("at://") {
                 return Err(anyhow!("aturi argument must be a valid AT URI"));
             }
 
-            Ok(assemble(at_uri)?)
+            Ok(assemble(at_uri, opengraph_path)?)
         }
     }
 }
@@ -53,7 +53,10 @@ fn compile_all(is_debug_build: bool) -> Result<()> {
     };
 
     for (rt, dir) in render_targets {
-        cmd!(sh, "wasm-pack build --{opt_target} --no-typescript --target {rt} atpage_renderer")
+        cmd!(
+            sh,
+            "wasm-pack build --{opt_target} --no-typescript --target {rt} atpage_renderer"
+        )
         .run()?;
 
         let destdir = format!("public/{}", dir);
@@ -97,7 +100,7 @@ fn nuke(ld: LoginData) -> Result<()> {
     .run()?)
 }
 
-fn assemble(at_uri: String) -> Result<()> {
+fn assemble(at_uri: String, opengraph_file: Option<String>) -> Result<()> {
     let at_uri = at_uri.replace("at://", "/at/");
 
     let sh = Shell::new()?;
@@ -111,6 +114,14 @@ fn assemble(at_uri: String) -> Result<()> {
     let ijs = ijs.replace("REPLACE_ME", &at_uri);
 
     sh.write_file("public/index.js", ijs)?;
+
+    if let Some(of) = opengraph_file {
+        let ofc = sh.read_file(of)?;
+        let ihtml = sh.read_file("template/index.html")?;
+
+        let ihtml = ihtml.replace("<!--OpenGraph tag go here-->", &ofc);
+        sh.write_file("public/index.html", ihtml)?;
+    }
 
     Ok(())
 }
