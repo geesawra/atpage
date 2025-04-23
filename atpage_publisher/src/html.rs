@@ -3,6 +3,7 @@ use std::{path::PathBuf, string::FromUtf8Error};
 use thiserror::{self, Error};
 
 const EDITABLE_ATTRS: [&'static str; 2] = ["href", "src"];
+const DISALLOWED_TAGS: [&'static str; 1] = ["template"];
 
 type EditRet = Result<Option<String>, Error>;
 
@@ -101,6 +102,12 @@ fn replace_if_present(
     attr: &str,
     editor: impl Fn(String, bool) -> EditRet,
 ) -> Result<(), Error> {
+    for dt in DISALLOWED_TAGS {
+        if sel.is(dt) {
+            return Ok(());
+        }
+    }
+
     if sel.has_attr(attr) {
         let curr_attr = sel.attr(attr).unwrap().to_string();
         if curr_attr.starts_with("http://") || curr_attr.starts_with("https://") {
