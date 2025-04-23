@@ -28,6 +28,8 @@ fn main() -> Result<()> {
         }
         shared::cli::Command::Nuke(ld) => nuke(ld),
         shared::cli::Command::Compile { at_uri } => {
+            println!("DEBUG_BUILD: {}", is_debug_build);
+            
             compile_all(is_debug_build)?;
             if !at_uri.starts_with("at://") {
                 return Err(anyhow!("aturi argument must be a valid AT URI"));
@@ -38,15 +40,15 @@ fn main() -> Result<()> {
     }
 }
 
-fn compile_all(release: bool) -> Result<()> {
+fn compile_all(is_debug_build: bool) -> Result<()> {
     let sh = Shell::new()?;
 
     let render_targets = [("web", "mod"), ("no-modules", "nomod")];
 
     let opt_target = {
-        match release {
-            true => "release",
-            false => "dev",
+        match is_debug_build {
+            true => "dev",
+            false => "release",
         }
     };
 
