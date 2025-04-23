@@ -4,9 +4,19 @@ use shared::cli::LoginData;
 use xshell::{cmd, Shell};
 
 fn main() -> Result<()> {
+    let is_debug_build = {
+        #[cfg(not(debug_assertions))]
+        let res = false;
+
+        #[cfg(debug_assertions)]
+        let res = true;
+
+        res
+    };
+
     match shared::cli::Command::parse() {
         shared::cli::Command::Post { login_data, src } => {
-            compile_all()?;
+            compile_all(is_debug_build)?;
 
             println!("Posting contents of {src} as an atpage website...");
             assemble(publish(login_data, src)?)?;
@@ -17,7 +27,7 @@ fn main() -> Result<()> {
         }
         shared::cli::Command::Nuke(ld) => nuke(ld),
         shared::cli::Command::Compile { at_uri } => {
-            compile_all()?;
+            compile_all(is_debug_build)?;
             if !at_uri.starts_with("at://") {
                 return Err(anyhow!("aturi argument must be a valid AT URI"));
             }
@@ -27,15 +37,20 @@ fn main() -> Result<()> {
     }
 }
 
-fn compile_all() -> Result<()> {
+fn compile_all(release: bool) -> Result<()> {
     let sh = Shell::new()?;
 
     let render_targets = [("web", "mod"), ("no-modules", "nomod")];
+
+    let opt_target = {
+        match release {
+            true => "release",
+            false => "dev",
+        }
+    };
+
     for (rt, dir) in render_targets {
-        cmd!(
-            sh,
-            "wasm-pack build --release --no-typescript --target {rt} atpage_renderer"
-        )
+        cmd!(sh, "wasm-pack build --{opt_target} --no-typescript --target {rt} atpage_renderer")
         .run()?;
 
         let destdir = format!("public/{}", dir);
