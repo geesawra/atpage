@@ -5,7 +5,14 @@ use xshell::{cmd, Shell};
 
 fn main() -> Result<()> {
     let is_debug_build = {
-        !std::env::var("DEBUG_BUILD").is_ok()
+        if let Ok(maybe_debug_build) = std::env::var("DEBUG_BUILD") {
+            match maybe_debug_build.to_lowercase().parse() {
+                Ok(v) => v,
+                Err(_) => false
+            }
+        } else {
+            false
+        }
     };
 
     match shared::cli::Command::parse() {
