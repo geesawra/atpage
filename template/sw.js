@@ -1,4 +1,4 @@
-import init, { resolve, init_wasm_log } from "./mod/atpage_renderer.js";
+import init, { resolve, init_wasm_log } from "/mod/atpage_renderer.js";
 
 var initialized = false;
 
@@ -26,6 +26,6 @@ self.addEventListener("fetch", (event) => {
         console.log("[SW] Fetch error:", error, event);
         return;
       }
-    })()
+    })(),
   );
 });
