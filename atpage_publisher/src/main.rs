@@ -15,9 +15,9 @@ async fn main() -> Result<()> {
     setup_log();
 
     match cli::Command::parse() {
-        cli::Command::Post { login_data, src, opengraph_path: _ } => post(login_data, src).await,
+        cli::Command::Post { login_data, src, extra_head: _ } => post(login_data, src).await,
         cli::Command::Nuke(login_data) => nuke(login_data).await,
-        cli::Command::Compile { at_uri: _ , opengraph_path: _} => Ok(()),
+        cli::Command::Compile { at_uri: _ , extra_head: _} => Ok(()),
     }
 }
 

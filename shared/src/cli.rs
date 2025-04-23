@@ -30,9 +30,9 @@ pub enum Command {
         #[arg(long, env = "ATPAGE_SRC")]
         src: String,
 
-        /// File containing HTML OpenGraph tags.
+        /// File containing additional HTML tags to be placed in the static index.html <head> file.
         #[arg(long)]
-        opengraph_path: Option<String>,
+        extra_head: Option<String>,
     },
 
     /// Deletes the industries.geesawra.website from the configured PDS for the logged-in user.
@@ -43,8 +43,8 @@ pub enum Command {
         /// AT URI containing a industries.geesawra.website collection.
         at_uri: String,
 
-        /// File containing HTML OpenGraph tags.
+        /// File containing additional HTML tags to be placed in the static index.html <head> file.
         #[arg(long)]
-        opengraph_path: Option<String>,
+        extra_head: Option<String>,
     },
 }
