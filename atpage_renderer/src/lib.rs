@@ -87,9 +87,9 @@ pub async fn resolve(event: web_sys::FetchEvent) -> web_sys::Response {
 
         r
     } else {
-        log::debug!("not an at url, fetching then returning: {}", u.clone());
+        log::debug!("not an AT URI, fetching then returning: {}", u.clone());
 
-        return atproto::get_raw_worker(u.clone(), web_sys::RequestMode::NoCors)
+        return atproto::get_raw_worker(u.clone(), event.request().mode())
             .await
             .unwrap();
     }
