@@ -31,6 +31,7 @@ pub enum Command {
         src: String,
 
         /// File containing HTML OpenGraph tags.
+        #[arg(long)]
         opengraph_path: Option<String>,
     },
 
@@ -43,6 +44,7 @@ pub enum Command {
         at_uri: String,
 
         /// File containing HTML OpenGraph tags.
+        #[arg(long)]
         opengraph_path: Option<String>,
     },
 }
