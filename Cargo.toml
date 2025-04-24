@@ -1,8 +1,3 @@
 [workspace]
 resolver = "2"
 members = ["atpage_renderer", "atpage_publisher", "shared", "xtask"]
-
-[profile.release]
-opt-level = 'z'
-lto = true
-codegen-units = 1
