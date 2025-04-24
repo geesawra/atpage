@@ -11,7 +11,7 @@ atrium-xrpc-client = "0.5.10"
 bsky-sdk = "0.1.13"
 clap = { version = "4.5.23", features = ["env", "derive"] }
 directories = "5.0.1"
-dom_query = "0.11.0"
+dom_query = { rev = "d5feceadb337f12a1954043d11090f51c193ce17", git = "https://github.com/niklak/dom_query.git" }
 envconfig = "0.11.0"
 futures = "0.3.31"
 html = "0.6.3"
