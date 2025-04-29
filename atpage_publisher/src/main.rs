@@ -15,9 +15,16 @@ async fn main() -> Result<()> {
     setup_log();
 
     match cli::Command::parse() {
-        cli::Command::Post { login_data, src, extra_head: _ } => post(login_data, src).await,
+        cli::Command::Post {
+            login_data,
+            src,
+            extra_head: _,
+        } => post(login_data, src).await,
         cli::Command::Nuke(login_data) => nuke(login_data).await,
-        cli::Command::Compile { at_uri: _ , extra_head: _} => Ok(()),
+        cli::Command::Compile {
+            at_uri: _,
+            extra_head: _,
+        } => Ok(()),
     }
 }
 
@@ -25,7 +32,7 @@ fn setup_log() {
     if std::env::var("RUST_LOG").is_err() {
         std::env::set_var("RUST_LOG", "info")
     }
-    
+
     env_logger::init();
 }
 
@@ -43,7 +50,7 @@ async fn nuke(ld: cli::LoginData) -> Result<()> {
 async fn post(ld: cli::LoginData, src: String) -> Result<()> {
     let content_dir = PathBuf::from_str(&src.clone()).unwrap();
 
-    let c = Arc::new(Mutex::new(
+    let identity_data = Arc::new(Mutex::new(
         atproto::IdentityData::login(ld.username.clone(), ld.password.clone(), ld.pds.clone())
             .await?,
     ));
@@ -71,50 +78,51 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
             }
         };
 
-        let page_content = scan_html(content.clone(), |src, is_a| {
+        let page_content = scan_html(content.clone(), async |src, is_a| {
             if is_a {
                 // ignore <a> at this point
                 return Ok(None);
             }
 
-            let c = c.clone();
+            let identity_data = identity_data.clone();
             let refs = refs.clone();
             let dedup = dedup.clone();
             let content_dir = content_dir.clone();
 
-            futures::executor::block_on(async move {
-                if let Some(blob) = dedup.lock().await.get(&src.clone()) {
-                    let (blob, blob_ref) = blob;
-                    refs.lock().await.push(blob.clone());
-                    return Ok(Some(c.lock().await.format_blob_uri(blob_ref.clone())));
-                }
-
-                let mut src_path = PathBuf::from_str(&src.clone()).unwrap();
-                if src_path.is_absolute() {
-                    src_path = src_path.strip_prefix("/").unwrap().to_path_buf();
-                }
-
-                let blob_path = content_dir.join(src_path.clone());
-
-                let blob_content = std::fs::read(blob_path.clone())
-                    .with_context(|| format!("cannot open {:?}", blob_path.clone()))?;
-
-                let c = c.lock().await;
-
-                // TODO(geesawra): check if a given blob_content is already on the PDS?
-                let (blob, blob_ref) = c.upload_blob(blob_content).await?;
-
-                log::debug!("Uploading {:?} to blob ref {}", blob_path, blob_ref);
-
+            if let Some(blob) = dedup.lock().await.get(&src.clone()) {
+                let (blob, blob_ref) = blob;
                 refs.lock().await.push(blob.clone());
-                dedup
-                    .lock()
-                    .await
-                    .insert(src.clone(), (blob, blob_ref.clone()));
+                return Ok(Some(
+                    identity_data.lock().await.format_blob_uri(blob_ref.clone()),
+                ));
+            }
 
-                Ok(Some(c.format_blob_uri(blob_ref)))
-            })
-        })?;
+            let mut src_path = PathBuf::from_str(&src.clone()).unwrap();
+            if src_path.is_absolute() {
+                src_path = src_path.strip_prefix("/").unwrap().to_path_buf();
+            }
+
+            let blob_path = content_dir.join(src_path.clone());
+
+            let blob_content = std::fs::read(blob_path.clone())
+                .with_context(|| format!("cannot open {:?}", blob_path.clone()))?;
+
+            let identity_data = identity_data.lock().await;
+
+            // TODO(geesawra): check if a given blob_content is already on the PDS?
+            let (blob, blob_ref) = identity_data.upload_blob(blob_content).await?;
+
+            log::debug!("Uploading {:?} to blob ref {}", blob_path, blob_ref);
+
+            refs.lock().await.push(blob.clone());
+            dedup
+                .lock()
+                .await
+                .insert(src.clone(), (blob, blob_ref.clone()));
+
+            Ok(Some(identity_data.format_blob_uri(blob_ref)))
+        })
+        .await?;
 
         let page = lexicon::Page {
             title: page_title,
@@ -122,7 +130,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
             embeds: Some(refs.lock().await.clone()),
         };
 
-        let page_data = c.lock().await.generate_page_data(page);
+        let page_data = identity_data.lock().await.generate_page_data(page);
 
         let stripped_path = to_html_path(f, content_dir.clone())?;
 
@@ -130,7 +138,6 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
     }
 
     // step 2: overwrite <a> tags
-
     let mut index_address = String::new();
 
     for f in walk_html(content_dir.clone())? {
@@ -149,26 +156,27 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
             None => continue,
         };
 
-        let maybe_page_content = scan_html(page_data.page.content.clone(), |attr, is_a| {
+        let maybe_page_content = scan_html(page_data.page.content.clone(), async |attr, is_a| {
             if !is_a {
                 return Ok(None);
             }
 
-            let c = c.clone();
+            let identity_data = identity_data.clone();
+
             let pages = pages.clone();
 
-            futures::executor::block_on(async move {
-                if let Some(page) = pages.lock().await.get(&PathBuf::from_str(&attr).unwrap()) {
-                    return Ok(Some(
-                        c.lock().await.format_record_uri(page.rkey.clone().unwrap()),
-                    ));
-                };
+            if let Some(page) = pages.lock().await.get(&PathBuf::from_str(&attr).unwrap()) {
+                let res = identity_data.lock().await;
 
-                Ok(None)
-            })
+                let data = res.format_record_uri(page.rkey.clone().unwrap());
+
+                return Ok(Some(data));
+            }
+
+            Ok(None)
         });
 
-        let page_content = maybe_page_content?;
+        let page_content = maybe_page_content.await?;
 
         let new_page_data = lexicon::PageData {
             page: lexicon::Page {
@@ -180,7 +188,11 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
             rkey: page_data.rkey,
         };
 
-        let res = c.lock().await.upload_page(new_page_data.clone()).await?;
+        let res = identity_data
+            .lock()
+            .await
+            .upload_page(new_page_data.clone())
+            .await?;
 
         log::info!("Uploaded {}: {}", f.display(), res.uri);
 

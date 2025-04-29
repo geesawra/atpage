@@ -52,13 +52,16 @@ pub fn walk_html(dir: PathBuf) -> Result<Vec<PathBuf>, Error> {
 /// scan_html scans the HTML contained in data, and runs editor on the content of the tree.
 /// editor implementors will receive the content of either an src or href tag attribute, and
 /// a boolean that's true if the attribute is on an <a> tag.
-pub fn scan_html(data: String, editor: impl Fn(String, bool) -> EditRet) -> Result<String, Error> {
+pub async fn scan_html(
+    data: String,
+    editor: impl AsyncFn(String, bool) -> EditRet,
+) -> Result<String, Error> {
     let doc = dom_query::Document::from(data);
     let body = doc.select("body");
     let head = doc.select("head");
 
-    walk_tree(body.clone(), &editor)?;
-    walk_tree(head.clone(), &editor)?;
+    walk_tree(body.clone(), &editor).await?;
+    walk_tree(head.clone(), &editor).await?;
 
     Ok(doc.html().to_string())
 }
@@ -74,32 +77,35 @@ pub fn page_title(data: String) -> Option<String> {
     }
 }
 
-fn walk_tree(sel: Selection, editor: &impl Fn(String, bool) -> EditRet) -> Result<(), Error> {
+async fn walk_tree<'a>(
+    sel: Selection<'a>,
+    editor: &impl AsyncFn(String, bool) -> EditRet,
+) -> Result<(), Error> {
     for child in sel.children().iter() {
         let deeper_child = child.children();
         if !deeper_child.is_empty() {
             for dc in deeper_child.iter() {
-                walk_tree(dc.clone(), editor)?;
+                Box::pin(walk_tree(dc.clone(), editor)).await?;
             }
             continue;
         }
 
         for attr in EDITABLE_ATTRS {
-            replace_if_present(child.clone(), attr, editor)?;
+            replace_if_present(child.clone(), attr, editor).await?;
         }
     }
 
     for attr in EDITABLE_ATTRS {
-        replace_if_present(sel.clone(), attr, editor)?;
+        replace_if_present(sel.clone(), attr, editor).await?;
     }
 
     Ok(())
 }
 
-fn replace_if_present(
-    sel: Selection,
+async fn replace_if_present<'a>(
+    sel: Selection<'a>,
     attr: &str,
-    editor: impl Fn(String, bool) -> EditRet,
+    editor: impl AsyncFn(String, bool) -> EditRet,
 ) -> Result<(), Error> {
     if sel.has_attr(attr) {
         let curr_attr = sel.attr(attr).unwrap().to_string();
@@ -110,7 +116,7 @@ fn replace_if_present(
 
         let is_a = sel.is("a");
 
-        if let Some(new_attr) = editor(sel.attr(attr).unwrap().to_string(), is_a)? {
+        if let Some(new_attr) = editor(sel.attr(attr).unwrap().to_string(), is_a).await? {
             sel.set_attr(attr, &new_attr)
         }
     }
