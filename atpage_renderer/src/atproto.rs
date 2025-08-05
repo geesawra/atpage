@@ -93,7 +93,7 @@ pub async fn solve_did(handle: String) -> Result<String, Error> {
 
     let data = get(u, false).await?;
 
-    let resp: HashMap<String, String> = serde_wasm_bindgen::from_value(data)?;
+    let resp: HashMap<String, String> = serde_wasm_bindgen::from_value(data.value)?;
 
     if let Some(did) = resp.get("did") {
         Ok(did.clone())
@@ -105,7 +105,7 @@ pub async fn solve_did(handle: String) -> Result<String, Error> {
 pub async fn solve_pds(did: String) -> Result<String, Error> {
     let data = get(plc_url(did.clone()), false).await?;
 
-    let resp: serde_json::Value = serde_wasm_bindgen::from_value(data)?;
+    let resp: serde_json::Value = serde_wasm_bindgen::from_value(data.value)?;
 
     Ok(
         match resp
@@ -125,7 +125,7 @@ pub async fn data(
     did: String,
     collection: String,
     blob: bool,
-) -> Result<JsValue, Error> {
+) -> Result<GetData, Error> {
     let (method, args) = match blob {
         true => (
             "com.atproto.sync.getBlob",
@@ -177,13 +177,20 @@ pub async fn webpage(data: JsValue, key: String) -> Result<Webpage, Error> {
     Ok(Webpage { content })
 }
 
-#[wasm_bindgen]
-pub async fn get(url: String, blob: bool) -> Result<JsValue, JsValue> {
+#[derive(Clone)]
+pub struct GetData {
+    pub value: JsValue,
+    pub mime_type: Option<String>,
+}
+
+pub async fn get(url: String, blob: bool) -> Result<GetData, JsValue> {
     log::debug!("getting {}", url);
     let resp: Response = get_raw_worker(url, RequestMode::Cors)
         .await?
         .dyn_into()
         .unwrap();
+
+    let ct = resp.headers().get("Content-Type")?;
 
     // Convert this other `Promise` into a rust `Future`.
     let json = JsFuture::from({
@@ -194,7 +201,10 @@ pub async fn get(url: String, blob: bool) -> Result<JsValue, JsValue> {
     })
     .await?;
 
-    Ok(json)
+    Ok(GetData {
+        value: json,
+        mime_type: ct,
+    })
 }
 
 #[wasm_bindgen]

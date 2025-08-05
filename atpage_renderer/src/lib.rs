@@ -5,7 +5,7 @@ use atproto::parse_at_url;
 use js_sys::Uint8Array;
 use shared::atproto::ATURL;
 use wasm_bindgen::prelude::*;
-use web_sys::{Response, ResponseInit};
+use web_sys::{Headers, Response, ResponseInit};
 
 static CACHED_DID_DATA: tokio::sync::OnceCell<(String, String)> =
     tokio::sync::OnceCell::const_new();
@@ -63,7 +63,7 @@ pub async fn resolve(event: web_sys::FetchEvent) -> Result<web_sys::Response, Er
 
     let (did, pds) = did_pds(&atu).await;
 
-        match atu.blob {
+    match atu.blob {
         true => blob(pds, did, atu).await,
         false => page(pds, did, atu).await,
     }
@@ -78,9 +78,14 @@ async fn blob(pds: String, did: String, atu: ATURL) -> Result<web_sys::Response,
     let ri = ResponseInit::new();
     ri.set_status(200);
 
+    let h = Headers::new().unwrap();
+    h.set("Content-Type", &data.mime_type.unwrap_or_default())
+        .unwrap();
+    ri.set_headers(&h);
+
     log::debug!("got blob, creating Uint8Array");
 
-    let buffer = Uint8Array::new(&data);
+    let buffer = Uint8Array::new(&data.value);
 
     log::debug!("blob: {:?}", buffer);
 
@@ -92,7 +97,7 @@ async fn page(pds: String, did: String, atu: ATURL) -> Result<web_sys::Response,
     let data = atproto::data(pds.clone(), did.clone(), atu.collection, atu.blob)
         .await
         .expect_throw("object not found");
-    let webpage = atproto::webpage(data.clone(), atu.key)
+    let webpage = atproto::webpage(data.value.clone(), atu.key)
         .await
         .expect_throw("can't find webpages");
 
