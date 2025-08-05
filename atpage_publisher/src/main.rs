@@ -79,7 +79,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
         };
 
         let page_content = scan_html(content.clone(), async |src, is_a| {
-            if is_a {
+            if is_a && !(src.ends_with(".jpg") || src.ends_with(".png")) {
                 // ignore <a> at this point
                 return Ok(None);
             }
