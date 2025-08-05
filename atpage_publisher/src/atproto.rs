@@ -1,7 +1,10 @@
 use anyhow::{anyhow, Context, Result};
 use atrium_api::{
     agent::atp_agent::{store::MemorySessionStore, AtpAgent},
-    com::atproto::repo::{create_record, delete_record, list_records},
+    com::{
+        self,
+        atproto::repo::{create_record, delete_record, list_records},
+    },
     types::{
         string::{AtIdentifier, RecordKey},
         BlobRef, Collection,
@@ -124,8 +127,20 @@ impl IdentityData {
         Ok(deleted)
     }
 
-    pub async fn upload_blob(&self, data: Vec<u8>) -> Result<(BlobRef, String)> {
-        let res = self.agent.api.com.atproto.repo.upload_blob(data).await?;
+    pub async fn upload_blob(
+        &self,
+        data: Vec<u8>,
+        ext: Option<String>,
+    ) -> Result<(BlobRef, String)> {
+        let mt = match infer::get(&data) {
+            Some(mt) => Some(mt.mime_type().to_owned()),
+            None => {
+                let m = mime_guess::from_ext(&ext.unwrap_or_default());
+                Some(m.first_or_text_plain().to_string())
+            }
+        };
+
+        let res = self.upload_blob_raw(data, mt).await?;
 
         match res.blob.clone() {
             atrium_api::types::BlobRef::Typed(t) => {
@@ -178,5 +193,29 @@ impl IdentityData {
             client: c,
             agent,
         })
+    }
+
+    pub async fn upload_blob_raw(
+        &self,
+        input: Vec<u8>,
+        mime_type: Option<String>,
+    ) -> atrium_xrpc::Result<
+        com::atproto::repo::upload_blob::Output,
+        com::atproto::repo::upload_blob::Error,
+    > {
+        let response = self
+            .client
+            .send_xrpc::<(), Vec<u8>, _, _>(&atrium_xrpc::XrpcRequest {
+                method: http::Method::POST,
+                nsid: com::atproto::repo::upload_blob::NSID.into(),
+                parameters: None,
+                input: Some(atrium_xrpc::InputDataOrBytes::Bytes(input)),
+                encoding: Some(mime_type.unwrap_or("*/*".to_owned())),
+            })
+            .await?;
+        match response {
+            atrium_xrpc::OutputDataOrBytes::Data(data) => Ok(data),
+            _ => Err(atrium_xrpc::Error::UnexpectedResponseType),
+        }
     }
 }

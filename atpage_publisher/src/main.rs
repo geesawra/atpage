@@ -107,10 +107,14 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
             let blob_content = std::fs::read(blob_path.clone())
                 .with_context(|| format!("cannot open {:?}", blob_path.clone()))?;
 
+            let blob_ext = blob_path
+                .extension()
+                .map(|s| s.to_str().unwrap().to_string());
+
             let identity_data = identity_data.lock().await;
 
             // TODO(geesawra): check if a given blob_content is already on the PDS?
-            let (blob, blob_ref) = identity_data.upload_blob(blob_content).await?;
+            let (blob, blob_ref) = identity_data.upload_blob(blob_content, blob_ext).await?;
 
             log::debug!("Uploading {:?} to blob ref {}", blob_path, blob_ref);
 

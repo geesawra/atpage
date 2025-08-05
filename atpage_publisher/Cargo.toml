@@ -27,3 +27,5 @@ shared = { path = "../shared" }
 log = "0.4.22"
 env_logger = "0.11.5"
 sha256 = "1.6.0"
+infer = "0.19.0"
+mime_guess = "2.0.5"
