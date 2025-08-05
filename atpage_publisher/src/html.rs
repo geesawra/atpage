@@ -87,7 +87,6 @@ async fn walk_tree<'a>(
             for dc in deeper_child.iter() {
                 Box::pin(walk_tree(dc.clone(), editor)).await?;
             }
-            continue;
         }
 
         for attr in EDITABLE_ATTRS {
@@ -111,10 +110,13 @@ async fn replace_if_present<'a>(
         let curr_attr = sel.attr(attr).unwrap().to_string();
         if curr_attr.starts_with("http://") || curr_attr.starts_with("https://") {
             // bypass externally-referenced resources
+            log::debug!("bypassing {}", curr_attr);
             return Ok(());
         }
 
         let is_a = sel.is("a");
+
+        log::debug!("selecting <a>: {}: {}", attr, sel.attr(attr).unwrap());
 
         if let Some(new_attr) = editor(sel.attr(attr).unwrap().to_string(), is_a).await? {
             sel.set_attr(attr, &new_attr)
