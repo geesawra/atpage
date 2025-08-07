@@ -53,6 +53,10 @@ impl IdentityData {
         }
     }
 
+    pub fn did(&self) -> AtIdentifier {
+        return self.did.clone();
+    }
+
     pub async fn upload_page(&self, page_data: lexicon::PageData) -> Result<create_record::Output> {
         let request = &lexicon::post_page(page_data);
 

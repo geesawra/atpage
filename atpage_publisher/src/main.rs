@@ -1,5 +1,5 @@
 use anyhow::{anyhow, Context, Result};
-use atrium_api::types::BlobRef;
+use atrium_api::types::{self, string::AtIdentifier, BlobRef};
 use clap::Parser;
 use html::{page_title, scan_html, walk_html};
 use shared::cli;
@@ -9,6 +9,20 @@ use tokio::sync::Mutex;
 mod atproto;
 mod html;
 mod lexicon;
+
+#[derive(Clone)]
+struct PageData {
+    pub did: AtIdentifier,
+    pub title: String,
+    pub content: String,
+    pub embeds: Option<Vec<types::BlobRef>>,
+}
+
+impl PageData {
+    fn rkey(&self) -> Option<String> {
+        Some(sha256::digest(self.title.clone()))
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -128,17 +142,16 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
         })
         .await?;
 
-        let page = lexicon::Page {
+        let page = PageData {
+            did: identity_data.lock().await.did(),
             title: page_title,
             content: page_content,
             embeds: Some(refs.lock().await.clone()),
         };
 
-        let page_data = identity_data.lock().await.generate_page_data(page);
-
         let stripped_path = to_html_path(f, content_dir.clone())?;
 
-        pages.lock().await.insert(stripped_path, page_data.clone());
+        pages.lock().await.insert(stripped_path, page.clone());
     }
 
     // step 2: overwrite <a> tags
@@ -160,7 +173,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
             None => continue,
         };
 
-        let maybe_page_content = scan_html(page_data.page.content.clone(), async |attr, is_a| {
+        let maybe_page_content = scan_html(page_data.content.clone(), async |attr, is_a| {
             if !is_a {
                 return Ok(None);
             }
@@ -172,7 +185,7 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
             if let Some(page) = pages.lock().await.get(&PathBuf::from_str(&attr).unwrap()) {
                 let res = identity_data.lock().await;
 
-                let data = res.format_record_uri(page.rkey.clone().unwrap());
+                let data = res.format_record_uri(page.rkey().unwrap());
 
                 return Ok(Some(data));
             }
@@ -182,14 +195,20 @@ async fn post(ld: cli::LoginData, src: String) -> Result<()> {
 
         let page_content = maybe_page_content.await?;
 
+        let (page_content_ref, _) = identity_data
+            .lock()
+            .await
+            .upload_blob(page_content.into_bytes(), Some("text/html".to_string()))
+            .await?;
+
         let new_page_data = lexicon::PageData {
             page: lexicon::Page {
-                title: page_data.page.title.clone(),
-                content: page_content,
-                embeds: page_data.page.embeds.clone(),
+                title: page_data.title.clone(),
+                content: page_content_ref,
+                embeds: page_data.embeds.clone(),
             },
-            id: page_data.id,
-            rkey: page_data.rkey,
+            id: page_data.did.clone(),
+            rkey: page_data.rkey(),
         };
 
         let res = identity_data
