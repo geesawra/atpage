@@ -10,12 +10,14 @@
 // Cool right?
 use bsky_sdk::api::types::{self, string::AtIdentifier, Collection};
 
+pub const COLLECTION_NAME: &'static str = "industries.geesawra.atpage";
+
 const CREATE_RECORD_NDIS: &str = "com.atproto.repo.createRecord";
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(tag = "$type")]
 pub enum KnownRecord {
-    #[serde(rename = "industries.geesawra.website")]
+    #[serde(rename = "industries.geesawra.atpage")]
     IndustriesGeesawraWebsitePage(Box<Record>),
 }
 impl From<Record> for KnownRecord {
@@ -30,7 +32,7 @@ impl From<Page> for KnownRecord {
 }
 
 impl Collection for Page {
-    const NSID: &'static str = "industries.geesawra.website";
+    const NSID: &'static str = COLLECTION_NAME;
     type Record = Record;
 }
 
@@ -38,10 +40,11 @@ impl Collection for Page {
 #[serde(rename_all = "camelCase")]
 pub struct Page {
     pub title: String,
-    pub content: String,
-    #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    pub embeds: core::option::Option<Vec<types::BlobRef>>,
+    pub content: types::BlobRef,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub embeds: Option<Vec<types::BlobRef>>,
 }
+
 pub type Record = types::Object<Page>;
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -53,14 +56,14 @@ pub struct InputData {
     ///The handle or DID of the repo (aka, current account).
     pub repo: types::string::AtIdentifier,
     ///The Record Key.
-    #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    pub rkey: core::option::Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rkey: Option<String>,
     ///Compare and swap with the previous commit by CID.
-    #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    pub swap_commit: core::option::Option<types::string::Cid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub swap_commit: Option<types::string::Cid>,
     ///Can be set to 'false' to skip Lexicon schema validation of record data, 'true' to require it, or leave unset to validate only for known Lexicons.
-    #[serde(skip_serializing_if = "core::option::Option::is_none")]
-    pub validate: core::option::Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub validate: Option<bool>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
