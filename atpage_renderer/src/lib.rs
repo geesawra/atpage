@@ -97,7 +97,7 @@ async fn page(pds: String, did: String, atu: ATURL) -> Result<web_sys::Response,
     let data = atproto::data(pds.clone(), did.clone(), atu.collection, atu.blob)
         .await
         .expect_throw("object not found");
-    let webpage = atproto::webpage(data.value.clone(), atu.key)
+    let webpage = atproto::webpage(data.value.clone(), atu.key, pds.clone(), did.clone())
         .await
         .expect_throw("can't find webpages");
 

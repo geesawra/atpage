@@ -1,3 +1,4 @@
+use js_sys::Uint8Array;
 use shared::atproto::ATURL;
 use std::collections::HashMap;
 use wasm_bindgen::prelude::*;
@@ -148,8 +149,13 @@ pub async fn data(
     Ok(get(u, blob).await?)
 }
 
-pub async fn webpage(data: JsValue, key: String) -> Result<Webpage, Error> {
-    let resp: serde_json::Value = serde_wasm_bindgen::from_value(data)?;
+pub async fn webpage(
+    raw_data: JsValue,
+    key: String,
+    pds: String,
+    did: String,
+) -> Result<Webpage, Error> {
+    let resp: serde_json::Value = serde_wasm_bindgen::from_value(raw_data)?;
 
     let arr = resp.get("records").and_then(|e| e.as_array()).unwrap();
 
@@ -168,11 +174,25 @@ pub async fn webpage(data: JsValue, key: String) -> Result<Webpage, Error> {
         .and_then(|e| e.get("value"))
         .unwrap(); // from now on we have the real record
 
-    let content = page
+    log::debug!("{:?}", page.as_str());
+    let content_id = page
         .get("content")
-        .and_then(|e| e.as_str())
+        .unwrap()
+        .get("ref")
+        .unwrap()
+        .get("$link")
+        .unwrap()
+        .as_str()
         .unwrap()
         .to_string();
+
+    log::debug!("Page content blob ref: {}", content_id.clone());
+
+    let res = data(pds, did, content_id.clone(), true).await?;
+
+    let buffer = Uint8Array::new(&res.value);
+
+    let content = String::from_utf8(buffer.to_vec()).unwrap();
 
     Ok(Webpage { content })
 }
