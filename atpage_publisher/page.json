@@ -1,21 +1,34 @@
 {
   "lexicon": 1,
-  "id": "industries.geesawra.website.page",
+  "id": "industries.geesawra.atpage",
   "defs": {
     "main": {
       "type": "record",
-      "description": "A record holding the content of a page, addressable by its record key",
+      "description": "A record holding pointing to page content, addressable by its record key",
       "key": "any",
       "record": {
         "type": "object",
-        "required": ["content"],
+        "required": [
+          "title",
+          "content"
+        ],
         "properties": {
-          "content": { "type": "string" },
+          "title": {
+            "type": "string"
+          },
+          "content": {
+            "type": "blob",
+            "accept": [
+              "text/html"
+            ]
+          },
           "embeds": {
             "type": "array",
-            "items": { 
+            "items": {
               "type": "blob",
-              "accept": ["*"]
+              "accept": [
+                "*"
+              ]
             }
           }
         }
