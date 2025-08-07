@@ -38,19 +38,11 @@ impl IdentityData {
             AtIdentifier::Handle(h) => h.to_string(),
         };
         format!(
-            "/at/{}/industries.geesawra.website/{}",
+            "/at/{}/{}/{}",
             did.to_string(),
+            lexicon::COLLECTION_NAME,
             rkey
         )
-    }
-
-    pub fn generate_page_data(&self, page: lexicon::Page) -> lexicon::PageData {
-        let rkey = sha256::digest(page.title.clone());
-        lexicon::PageData {
-            page,
-            id: self.did.clone(),
-            rkey: Some(rkey),
-        }
     }
 
     pub fn did(&self) -> AtIdentifier {

@@ -10,6 +10,8 @@
 // Cool right?
 use bsky_sdk::api::types::{self, string::AtIdentifier, Collection};
 
+pub const COLLECTION_NAME: &'static str = "industries.geesawra.atpage";
+
 const CREATE_RECORD_NDIS: &str = "com.atproto.repo.createRecord";
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -30,7 +32,7 @@ impl From<Page> for KnownRecord {
 }
 
 impl Collection for Page {
-    const NSID: &'static str = "industries.geesawra.atpage";
+    const NSID: &'static str = COLLECTION_NAME;
     type Record = Record;
 }
 
